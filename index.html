@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06060f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="赛博夜市">
+<title>赛博夜市 · 深夜摆摊模拟器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+ --bg:#06060f;--pan:#0d0d1f;--pan2:#12122a;--line:#26264a;
+ --cy:#22d3ee;--mg:#ff40ff;--yl:#ffd166;--gr:#34d399;--rd:#ff5d5d;--dim:#8b8bb0;
+}
+html,body{height:100%}
+body{
+ background:radial-gradient(1200px 600px at 50% -10%,#141433 0%,var(--bg) 60%);
+ color:#e8e8ff;font-family:system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+ min-height:100vh;overflow-x:hidden;
+ touch-action:manipulation;
+ -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+ overscroll-behavior:none;
+ padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);
+ padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
+}
+#app{max-width:560px;margin:0 auto;padding:0 12px 40px}
+.hidden{display:none !important}
+button{font-family:inherit}
+
+/* ---------- 顶栏 ---------- */
+#topbar{position:sticky;top:0;z-index:100;display:flex;gap:6px;align-items:center;
+ background:rgba(6,6,15,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+ padding:8px 10px;border-bottom:1px solid var(--line);margin:0 -12px 12px}
+.tb{background:var(--pan2);border:1px solid var(--line);border-radius:8px;
+ padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap}
+.tb.grow{flex:1;text-align:center;color:var(--yl);font-size:15px}
+.tb.btn{cursor:pointer}
+.tb.btn:active{transform:scale(.92)}
+.tb.btn.off{opacity:.35}
+@keyframes flashUp{0%{color:var(--gr);text-shadow:0 0 12px var(--gr)}100%{color:inherit;text-shadow:none}}
+@keyframes flashDown{0%{color:var(--rd);text-shadow:0 0 12px var(--rd)}100%{color:inherit;text-shadow:none}}
+.flash-up{animation:flashUp .7s ease-out}
+.flash-down{animation:flashDown .7s ease-out}
+
+/* ---------- 通用 ---------- */
+.btn{display:inline-block;background:var(--pan2);border:1px solid var(--line);border-radius:10px;
+ padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;
+ transition:transform .08s ease,filter .08s ease}
+.btn:active{transform:translateY(2px) scale(.97);filter:brightness(1.2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.mg{background:linear-gradient(135deg,#b026b0,#ff40ff);border-color:var(--mg);color:#fff}
+.btn.yl{background:linear-gradient(135deg,#b8860b,#ffd166);border-color:var(--yl);color:#1a1a05}
+.btn.gr{background:linear-gradient(135deg,#0f9d6e,#34d399);border-color:var(--gr);color:#03130c}
+.btn.rd{background:linear-gradient(135deg,#b03030,#ff5d5d);border-color:var(--rd);color:#fff}
+.btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+.btn.big{display:block;width:100%;padding:14px;font-size:16px}
+h3{margin-bottom:10px;font-size:17px}
+.mtxt{font-size:13px;line-height:1.7;color:#cfcfe8}
+.mtxt b{color:var(--yl)}
+
+/* ---------- 屏幕切换动画 ---------- */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#scr-menu,#scr-day,#scr-night,#scr-settle,#scr-over{animation:fadeIn .28s ease}
+
+/* ---------- 主菜单 ---------- */
+#scr-menu{padding-top:9vh;text-align:center}
+.menu-deco{font-size:22px;letter-spacing:8px;margin-bottom:14px;opacity:.9}
+.game-logo{font-size:44px;font-weight:900;letter-spacing:6px;
+ background:linear-gradient(180deg,var(--cy),var(--mg));-webkit-background-clip:text;background-clip:text;color:transparent;
+ text-shadow:0 0 30px rgba(34,211,238,.25);margin-bottom:6px}
+.game-sub{font-size:12px;color:var(--dim);letter-spacing:3px;margin-bottom:14px}
+.game-ver{font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:28px}
+.menu-btns{display:flex;flex-direction:column;gap:12px;max-width:300px;margin:0 auto 24px}
+.menu-foot{font-size:11px;color:var(--dim);line-height:1.9;margin-top:20px}
+#menuLife{margin-top:8px}
+.ml{font-size:11px;color:var(--dim);margin-bottom:8px}
+.achs{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.achs span{font-size:16px;opacity:.18;filter:grayscale(1)}
+.achs span.on{opacity:1;filter:none}
+
+/* ---------- 白天 ---------- */
+#dayStatus{background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.wx{font-size:13px;color:var(--cy);margin-bottom:4px}
+.qst{font-size:12px;color:#cfcfe8}
+.qst b{color:var(--yl)}
+.qst.free{color:var(--gr);margin-top:4px}
+#eventBanner{background:linear-gradient(90deg,rgba(255,64,255,.15),rgba(34,211,238,.15));
+ border:1px solid var(--mg);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:10px}
+#tabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.tab{flex:1;min-width:64px;background:var(--pan);border:1px solid var(--line);border-radius:8px;
+ padding:8px 4px;font-size:12px;text-align:center;cursor:pointer;white-space:nowrap}
+.tab.on{background:linear-gradient(135deg,rgba(34,211,238,.25),rgba(255,64,255,.25));border-color:var(--cy);color:var(--cy)}
+#dayPanel{background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:260px}
+.lackTip{background:rgba(255,93,93,.12);border:1px solid var(--rd);border-radius:8px;
+ padding:6px 10px;font-size:12px;color:var(--rd);margin-bottom:10px}
+.ing-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ing-card{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.ing-card b{font-size:13px}
+.ing-card .stk{font-size:11px;color:var(--dim);margin:3px 0 8px}
+.ing-card .stk b{color:var(--gr)}
+.ops{display:flex;gap:6px}
+.rd-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.chip{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px 4px;
+ text-align:center;font-size:11px;cursor:pointer}
+.chip:active{transform:scale(.95)}
+.chip.sel{border-color:var(--cy);color:var(--cy);background:rgba(34,211,238,.12);box-shadow:0 0 10px rgba(34,211,238,.3)}
+.rd-status{font-size:12px;color:var(--dim);margin-bottom:10px;line-height:1.8}
+.rd-status b{color:var(--cy)}
+.dish-card,.up-card{background:var(--pan2);border:1px solid var(--line);border-radius:10px;
+ padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dish-card .dn b{font-size:13px}
+.dish-card .dn span{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+.up-card .dn span{color:var(--cy)}
+.staff-row{display:flex;justify-content:space-between;align-items:center;background:var(--pan2);
+ border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px}
+.panel-tip{font-size:11px;color:var(--dim);line-height:1.8;margin-top:10px}
+.prestige-box{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+#dayFooter{margin-top:14px}
+
+/* ---------- 夜晚 ---------- */
+#scr-night{position:relative}
+.night-hud{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#nightClock{font-size:22px;font-weight:900;color:var(--cy);min-width:64px;font-variant-numeric:tabular-nums}
+#nightClock.warn{color:var(--rd);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.35}}
+#timebar{flex:1;height:12px;background:var(--pan2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+#timebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--cy),var(--mg));border-radius:6px;transition:width .2s linear}
+#timebar.warn i{background:linear-gradient(90deg,var(--rd),var(--yl))}
+#nightEarn{font-size:16px;font-weight:800;color:var(--yl);min-width:70px;text-align:right}
+#cookList{margin-bottom:10px}
+.cook{display:flex;align-items:center;gap:10px;background:var(--pan);border:1px solid var(--line);
+ border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px}
+.cbar{flex:1;height:8px;background:var(--pan2);border-radius:4px;overflow:hidden}
+.cbar i{display:block;height:100%;background:var(--yl);border-radius:4px}
+#custQueue{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:120px;margin-bottom:12px}
+.cust{display:flex;gap:8px;align-items:center;background:var(--pan);border:1px solid var(--line);
+ border-radius:12px;padding:10px;cursor:pointer;transition:transform .08s ease}
+.cust:active{transform:scale(.95)}
+.cust .cAv{font-size:26px}
+.cust .cInfo{flex:1;min-width:0}
+.cust .cInfo b{font-size:12px;display:block}
+.cust .cInfo span{font-size:10px;color:var(--dim);display:block;margin:2px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust.noing{opacity:.45}
+.pbar{height:5px;background:var(--pan2);border-radius:3px;overflow:hidden}
+.pbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--gr),var(--yl),var(--rd));border-radius:3px}
+.night-ops{display:flex;gap:10px;margin-bottom:10px}
+.night-ops .btn{flex:1}
+#staffLine{font-size:11px;color:var(--dim);text-align:center;min-height:16px}
+.night-tip{text-align:center;font-size:11px;color:var(--dim);margin-top:6px}
+
+/* ---------- 结算 / 结局 ---------- */
+#scr-settle,#scr-over{padding-top:6vh;text-align:center}
+.settle-box,.over-box{background:var(--pan);border:1px solid var(--line);border-radius:16px;
+ padding:24px 18px;max-width:360px;margin:0 auto 20px}
+.settle-box h2{font-size:22px;margin-bottom:14px}
+.settle-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.settle-line b{color:var(--yl)}
+.over-box h2{font-size:22px;color:var(--rd);margin-bottom:12px}
+
+/* ---------- 弹窗 ---------- */
+#modalBox{position:fixed;inset:0;z-index:900;background:rgba(0,0,10,.7);backdrop-filter:blur(4px);
+ -webkit-backdrop-filter:blur(4px);display:flex;overflow-y:auto;padding:20px}
+#modalCard{background:var(--pan);border:1px solid var(--cy);border-radius:16px;padding:20px;
+ max-width:400px;width:100%;margin:auto;box-shadow:0 0 40px rgba(34,211,238,.2);
+ animation:pop .22s ease}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.mops{display:flex;gap:10px;margin-top:14px}
+.mops .btn{flex:1}
+.gloop{display:flex;justify-content:center;align-items:center;gap:6px;margin:14px 0;flex-wrap:wrap}
+.gnode{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:18px;text-align:center}
+.gnode span{display:block;font-size:10px;margin-top:4px}
+.arr{color:var(--dim);font-size:12px}
+.gdots{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.gdot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.gdot.on{background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.grow2{display:flex;gap:10px;align-items:flex-start;background:var(--pan2);border:1px solid var(--line);
+ border-radius:10px;padding:10px;margin-bottom:8px}
+.grow2 .gi{font-size:20px}
+.grow2 div{font-size:12px;line-height:1.7}
+.gpage-tip{font-size:11px;color:var(--yl);background:rgba(255,209,102,.08);
+ border:1px dashed var(--yl);border-radius:8px;padding:8px 10px;margin-top:4px}
+.tal{display:flex;gap:12px;align-items:center;background:var(--pan2);border:1px solid var(--line);
+ border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
+.tal:active{transform:scale(.97);border-color:var(--cy)}
+.tal .ti{font-size:26px}
+.tal b{display:block;font-size:14px}
+.tal span{font-size:11px;color:var(--dim)}
+
+/* ---------- 同步中心 ---------- */
+.syncStat{background:var(--pan2);border:1px solid var(--line);border-radius:8px;
+ padding:8px 10px;font-size:12px;color:var(--cy);margin-bottom:10px;line-height:1.8}
+#syncIn,#syncOut{width:100%;min-height:110px;background:var(--pan2);border:1px solid var(--line);
+ border-radius:8px;color:#cfcfe8;font-size:11px;line-height:1.6;padding:8px;margin-top:8px;
+ word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
+
+/* ---------- Toast ---------- */
+#toasts{position:fixed;top:calc(52px + env(safe-area-inset-top));left:0;right:0;z-index:1000;
+ display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:rgba(13,13,31,.95);border:1px solid var(--cy);border-radius:10px;
+ padding:8px 16px;font-size:13px;animation:pop .2s ease;transition:opacity .3s,transform .3s}
+.toast.gold{border-color:var(--yl);color:var(--yl)}
+.toast.gr{border-color:var(--gr);color:var(--gr)}
+.toast.rd{border-color:var(--rd);color:var(--rd)}
+.toast.cy{border-color:var(--cy);color:var(--cy)}
+.toast.out{opacity:0;transform:translateY(-10px)}
+
+/* ---------- 移动端 ---------- */
+@media (max-width:480px){
+ .game-logo{font-size:34px}
+ #custQueue{grid-template-columns:1fr}
+ .ing-grid{grid-template-columns:1fr 1fr}
+ .rd-chips{grid-template-columns:repeat(4,1fr)}
+ .tb{padding:5px 8px;font-size:12px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar" class="hidden">
+    <div class="tb" id="tbDay">第1天</div>
+    <div class="tb grow" id="tbMoney">¥300</div>
+    <div class="tb" id="tbRep">📟 50</div>
+    <div class="tb btn" id="btnBgm" data-act="bgm" title="背景音乐开关">🎵</div>
+    <div class="tb btn" id="btnSound" data-act="sound" title="音效开关">🔊</div>
+    <div class="tb btn" id="btnMenu" data-act="toMenu" title="主菜单">🏠</div>
+  </div>
+
+  <section id="scr-menu">
+    <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
+    <div class="game-logo">赛博夜市</div>
+    <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
+    <div class="game-ver">内测版 v0.9.0 · 2026-10-18</div>
+    <div class="menu-btns">
+      <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
+      <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
+      <div class="btn" data-act="guide">📖 玩法说明</div>
+      <div class="btn" data-act="syncCenter">🔄 数据同步</div>
+      <div class="btn rd" data-act="askReset">🗑️ 清除存档</div>
+    </div>
+    <div id="menuLife"></div>
+    <div class="menu-foot">霓虹闪烁的 2124 年，你从大厂裸辞，决定在赛博夜市支起一个小摊。<br>
+    白手起家 · 研发菜品 · 招兵买马 · 对抗房租 · 开启连锁 —— 做出全街区最狂的摊！<br>
+    本地自动存档 · 无需联网 · 双击即玩</div>
+  </section>
+
+  <section id="scr-day" class="hidden">
+    <div id="dayStatus"></div>
+    <div id="tabs"></div>
+    <div id="dayPanel"></div>
+    <div id="dayFooter">
+      <div class="btn big mg" id="startNightBtn" data-act="startNight">🌙 开始今晚营业</div>
+    </div>
+  </section>
+
+  <section id="scr-night" class="hidden">
+    <div class="night-hud">
+      <div id="nightClock">60s</div>
+      <div id="timebar"><i></i></div>
+      <div id="nightEarn">¥0</div>
+    </div>
+    <div id="cookList"></div>
+    <div id="custQueue"></div>
+    <div class="night-ops">
+      <div class="btn" data-act="npause">⏸ 暂停</div>
+      <div class="btn" data-act="nspeed">⏩ 极速</div>
+    </div>
+    <div id="staffLine"></div>
+    <div class="night-tip">点击顾客接单做菜 · 空格暂停 / S 极速</div>
+  </section>
+
+  <section id="scr-settle" class="hidden">
+    <div class="settle-box">
+      <h2>🌙 打烊了！</h2>
+      <div id="settleBody"></div>
+    </div>
+    <div id="settleOps"></div>
+  </section>
+
+  <section id="scr-over" class="hidden">
+    <div class="over-box">
+      <h2 id="overTitle">💀 破产出局</h2>
+      <div id="overBody"></div>
+    </div>
+    <div class="menu-btns" style="max-width:300px;margin:0 auto">
+      <div class="btn mg" data-act="again">🔄 再来一局</div>
+      <div class="btn" data-act="toMenu">🏠 主菜单</div>
+    </div>
+  </section>
+</div>
+
+<div id="modalBox" class="hidden"><div id="modalCard"></div></div>
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* ================= 工具 ================= */
+function $(s){return document.querySelector(s)}
+function fmt(n){return Math.round(n).toLocaleString('en-US')}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function choice(arr){return arr[(Math.random()*arr.length)|0]}
+
+/* ================= 音效引擎 ================= */
+const SOUND={on:true};
+const SFX={ctx:null,
+  init(){if(this.ctx)return;try{var AC=window.AudioContext||window.webkitAudioContext;if(AC)this.ctx=new AC()}catch(e){}},
+  beep(f,d,type,v,slide){
+    if(!this.ctx||!SOUND.on)return;
+    try{
+      var t=this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();
+      o.type=type||'sine';o.frequency.setValueAtTime(f,t);
+      if(slide)o.frequency.linearRampToValueAtTime(slide,t+d);
+      g.gain.setValueAtTime(v||.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+      o.connect(g);g.connect(this.ctx.destination);o.start(t);o.stop(t+d+.02);
+    }catch(e){}
+  },
+  click(){this.beep(880,.05,'triangle',.04)},
+  coin(){this.beep(1318,.08,'square',.045);setTimeout(function(){SFX.beep(1760,.1,'square',.04)},60)},
+  bigcoin(){[784,988,1175,1568].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.12,'triangle',.05)},i*70)})},
+  bad(){this.beep(180,.25,'sawtooth',.05,90)},
+  buy(){this.beep(523,.07,'triangle',.05);setTimeout(function(){SFX.beep(784,.09,'triangle',.05)},70)},
+  hire(){[392,523,659].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.08,'triangle',.05)},i*70)})},
+  upgrade(){[440,554,659,880].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.09,'square',.04)},i*60)})},
+  quest(){[659,784,1046,1318].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.1,'triangle',.055)},i*80)})},
+  cook(){this.beep(330,.09,'square',.05,220)},
+  talent(){[1046,1318,1568,2093].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.12,'sine',.05)},i*90)})},
+  gameover(){[392,330,262,196].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.25,'sawtooth',.06)},i*220)})},
+  whoosh(){this.beep(160,.5,'sawtooth',.045,520)},
+};
+
+/* ================= BGM 引擎（Am-F-C-G · 88BPM 程序化合成） ================= */
+const BGM={
+  on:(function(){try{return localStorage.getItem('cyberNightMarket_bgm')!=='0'}catch(e){return true}})(),
+  playing:false,t0:0,step:0,timer:null,_out:null,
+  ensure(){
+    if(!this.on||this.playing||!SFX.ctx)return;
+    var self=this;
+    SFX.ctx.resume().then(function(){self.start()}).catch(function(){});
+  },
+  start(){
+    if(this.playing||!SFX.ctx)return;
+    this.playing=true;this.t0=SFX.ctx.currentTime+.1;this.step=0;
+    var self=this;
+    this.timer=setInterval(function(){self.sched()},100);
+  },
+  stop(){this.playing=false;if(this.timer){clearInterval(this.timer);this.timer=null}},
+  toggle(){
+    this.on=!this.on;
+    try{localStorage.setItem('cyberNightMarket_bgm',this.on?'1':'0')}catch(e){}
+    if(this.on)this.ensure();else this.stop();
+    return this.on;
+  },
+  mkOut(){var g=SFX.ctx.createGain();g.gain.value=.55;g.connect(SFX.ctx.destination);return g},
+  note(t,f,d,type,v){
+    if(!SFX.ctx)return;
+    try{
+      var o=SFX.ctx.createOscillator(),g=SFX.ctx.createGain();
+      o.type=type;o.frequency.value=f;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.02);
+      g.gain.exponentialRampToValueAtTime(.001,t+d);
+      o.connect(g);g.connect(this._out||(this._out=this.mkOut()));
+      o.start(t);o.stop(t+d+.05);
+    }catch(e){}
+  },
+  hat(t){
+    if(!SFX.ctx)return;
+    try{
+      var c=SFX.ctx,len=2205,buf=c.createBuffer(1,len,c.sampleRate),ch=buf.getChannelData(0);
+      for(var i=0;i<len;i++)ch[i]=(Math.random()*2-1)*(1-i/len);
+      var n=c.createBufferSource();n.buffer=buf;
+      var hp=c.createBiquadFilter();hp.type='highpass';hp.frequency.value=6500;
+      var g=c.createGain();g.gain.value=.06;
+      n.connect(hp);hp.connect(g);g.connect(this._out||(this._out=this.mkOut()));
+      n.start(t);
+    }catch(e){}
+  },
+  sched(){
+    if(!this.playing||!SFX.ctx)return;
+    var s16=(60/88)/4,look=SFX.ctx.currentTime+.45;
+    if(this.t0<SFX.ctx.currentTime-.08)this.t0=SFX.ctx.currentTime+.05; // 后台节流后重对齐
+    var bass=[110,87.31,130.81,98],
+        tri=[[220,261.63,329.63],[174.61,220,261.63],[261.63,329.63,392],[196,246.94,293.66]],
+        arp=[0,1,2,1];
+    while(this.t0<look){
+      var st=this.step%64,bar=(st/16)|0,q=st%16;
+      if(q%4===0)this.note(this.t0,bass[bar],.4,'triangle',.16);
+      if(q%8===0){var triad=tri[bar];for(var i=0;i<3;i++)this.note(this.t0+i*.01,triad[i],.9,'sine',.05)}
+      if(q%2===0)this.note(this.t0,tri[bar][arp[(q/2)%4]]*2,.18,'square',.035);
+      if(G&&NIGHT&&NIGHT.active&&q%2===1)this.hat(this.t0);
+      this.t0+=s16;this.step++;
+    }
+  },
+};
+
+/* ================= 数据表 ================= */
+const INGS=[
+  {id:'flour',n:'合成面粉',c:4,cat:'st',ic:'🌾'},
+  {id:'rice',n:'营养米砖',c:5,cat:'st',ic:'🍚'},
+  {id:'meat',n:'培养肉',c:9,cat:'st',ic:'🥩'},
+  {id:'veg',n:'水培蔬菜',c:6,cat:'st',ic:'🥬'},
+  {id:'sugar',n:'代糖晶体',c:4,cat:'sw',ic:'🍬'},
+  {id:'fruit',n:'基因水果',c:7,cat:'dr',ic:'🍓'},
+  {id:'ice',n:'纯净水冰',c:2,cat:'dr',ic:'🧊'},
+  {id:'tea',n:'茶砖浓缩液',c:5,cat:'dr',ic:'🍵'},
+];
+function ingN(id){var i=INGS.find(function(x){return x.id===id});return i?i.n:id}
+
+const RECIPES=[
+  {id:'r0', a:'flour',b:'meat', n:'芯片肉夹馍', p:18,cat:'st'},
+  {id:'r1', a:'flour',b:'veg',  n:'电子菜煎饼', p:12,cat:'st'},
+  {id:'r2', a:'flour',b:'sugar',n:'霓虹糖霜华夫',p:14,cat:'sw'},
+  {id:'r3', a:'flour',b:'tea',  n:'抹茶数据可丽',p:17,cat:'sw'},
+  {id:'r4', a:'flour',b:'ice',  n:'超导冷面',   p:13,cat:'st'},
+  {id:'r5', a:'rice', b:'meat', n:'全息卤肉饭', p:20,cat:'st'},
+  {id:'r6', a:'rice', b:'veg',  n:'纳米翡翠炒饭',p:16,cat:'st'},
+  {id:'r7', a:'rice', b:'sugar',n:'像素八宝粽', p:15,cat:'sw'},
+  {id:'r8', a:'meat', b:'veg',  n:'义体小炒肉', p:22,cat:'st'},
+  {id:'r9', a:'meat', b:'sugar',n:'蜜汁机械叉烧',p:24,cat:'st'},
+  {id:'r10',a:'veg',  b:'sugar',n:'蔬果轻食沙拉',p:13,cat:'sw'},
+  {id:'r11',a:'sugar',b:'fruit',n:'合成水果捞', p:13,cat:'sw'},
+  {id:'r12',a:'sugar',b:'ice',  n:'神经霜激凌', p:15,cat:'sw'},
+  {id:'r13',a:'fruit',b:'ice',  n:'冰镇量子果汁',p:12,cat:'dr'},
+  {id:'r14',a:'tea',  b:'ice',  n:'赛博冰茶',   p:11,cat:'dr'},
+  {id:'r15',a:'tea',  b:'fruit',n:'全息水果茶', p:16,cat:'dr'},
+  {id:'r16',a:'tea',  b:'sugar',n:'珍珠神经奶茶',p:18,cat:'dr'},
+];
+RECIPES.forEach(function(r){r.key=[r.a,r.b].sort().join('+')});
+function recById(id){return RECIPES.find(function(r){return r.id===id})}
+const CAT_IC={st:'🍜 主食',sw:'🍡 甜品',dr:'🧋 饮品'};
+
+const CUSTS=[
+  {id:'worker', n:'打工人',  e:'💼',cats:['st'],    pat:1.0,tip:1.0,pay:1.0},
+  {id:'student',n:'大学生',  e:'🎓',cats:['st','dr'],pat:1.4,tip:0.6,pay:0.7},
+  {id:'coder',  n:'程序员',  e:'💻',cats:['dr','st'],pat:0.6,tip:1.3,pay:1.4},
+  {id:'robot',  n:'机器人',  e:'🤖',cats:['st','sw'],pat:1.2,tip:0.5,pay:1.0,noRep:true},
+  {id:'influ',  n:'网红',    e:'📸',cats:['sw','dr'],pat:0.8,tip:2.2,pay:1.8},
+  {id:'emo',    n:'网抑云人',e:'🌧️',cats:['sw'],    pat:1.6,tip:1.0,pay:0.9},
+];
+
+const TALENTS=[
+  {id:'crit',  n:'暴击芯片', d:'15% 概率双倍收入（可叠加）',ic:'⚡'},
+  {id:'tip',   n:'招财猫摆件',d:'小费 +25%（可叠加）',      ic:'🐱'},
+  {id:'auto',  n:'自动炒锅', d:'做菜速度 +35%（可叠加）',  ic:'🍳'},
+  {id:'flow',  n:'网红灯牌', d:'客流 +20%（可叠加）',      ic:'💡'},
+  {id:'chair', n:'舒适座椅', d:'顾客耐心 +30%（可叠加）',  ic:'🛋️'},
+  {id:'shield',n:'舆情护盾', d:'气跑顾客 50% 不扣声望',    ic:'🛡️'},
+  {id:'bulk',  n:'批发渠道', d:'进货价 -20%',              ic:'📦'},
+  {id:'insp',  n:'灵感迸发', d:'研发失败返还全部食材',      ic:'✨'},
+];
+
+const UPS=[
+  {id:'stall',n:'摊位扩建',d:'客流提升',      ic:'🏗️',base:120},
+  {id:'stove',n:'灶台升级',d:'做菜更快',      ic:'🔥',base:100},
+  {id:'sign', n:'霓虹招牌',d:'小费提升',      ic:'🪧',base:90},
+  {id:'spk',  n:'氛围音箱',d:'声望获取提升',  ic:'🔊',base:80},
+];
+
+const WEATHERS=[
+  {id:'sunny',n:'晴',  ic:'☀️',d:'适合摆摊的好天气',        mult:{},flow:1},
+  {id:'rain', n:'雨',  ic:'🌧️',d:'主食销量 +25%',           mult:{st:1.25},flow:1},
+  {id:'heat', n:'热浪',ic:'🥵',d:'饮品销量 +40%',           mult:{dr:1.4},flow:1},
+  {id:'fog',  n:'酸雾',ic:'🌫️',d:'客流 -15% · 甜品 +20%',   mult:{sw:1.2},flow:.85},
+];
+
+const STAFF_NAMES=['阿伟','小美','老王','阿强','小林','大熊','阿飞','酱酱','阿杰','琪琪'];
+
+const ACHS=[
+  {id:'first', n:'开张首单',d:'卖出第一份菜',        ic:'🥇'},
+  {id:'n500',  n:'小有名气',d:'单晚营收 ¥500',       ic:'🌙'},
+  {id:'n1000', n:'单晚破千',d:'单晚营收 ¥1000',      ic:'💸'},
+  {id:'s100',  n:'百客盈门',d:'累计接待 100 位顾客', ic:'🎫'},
+  {id:'dish17',n:'满汉全席',d:'研发全部 17 道菜',    ic:'📜'},
+  {id:'brand', n:'连锁萌芽',d:'开出第一家分店',      ic:'🏪'},
+  {id:'d7',    n:'一周生还',d:'撑过第 7 天交租',     ic:'📅'},
+  {id:'rich',  n:'万贯家财',d:'持有 ¥5000',          ic:'🏦'},
+];
+
+/* ================= 全局状态 ================= */
+const SAVE_KEY='cyberNightMarket_v1',LIFE_KEY='cyberNightMarket_life';
+let G=null,NIGHT=null,TAB='buy',RD1=null,RD2=null;
+let syncPending=null; // 同步冲突弹窗暂存的导入数据
+let LIFE={served:0,earned:0,brands:0,bestDay:0},ACH={};
+
+function freshG(){return{day:1,money:300,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},
+  weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0},over:null}}
+
+/* ================= 存档 ================= */
+function saveGame(){try{if(G&&!G.over)localStorage.setItem(SAVE_KEY,JSON.stringify(G))}catch(e){}
+  SYNC.mirrorSoon()}
+function saveLife(){try{localStorage.setItem(LIFE_KEY,JSON.stringify({life:LIFE,ach:ACH}))}catch(e){}
+  SYNC.mirrorSoon()}
+function loadLife(){
+  try{
+    var raw=localStorage.getItem(LIFE_KEY);if(!raw)return;
+    var d=JSON.parse(raw);if(!d||typeof d!=='object')return;
+    LIFE={served:clamp(Math.round(+d.life.served||0),0,1e9),
+          earned:clamp(Math.round(+d.life.earned||0),0,1e12),
+          brands:clamp(Math.round(+d.life.brands||0),0,9999),
+          bestDay:clamp(Math.round(+d.life.bestDay||0),0,1e9)};
+    ACH={};if(d.ach&&typeof d.ach==='object')ACHS.forEach(function(a){if(d.ach[a.id])ACH[a.id]=1});
+  }catch(e){}
+}
+/* 存档清洗器（桌面端/移动端/导入同步码 共用同一套白名单校验） */
+function sanitizeSave(d){
+  try{
+    if(!d||typeof d!=='object')return null;
+    var g=freshG();
+    g.day=clamp(Math.round(+d.day||1),1,9999);
+    g.money=clamp(Math.round(+d.money||0),0,1e9);
+    g.rep=clamp(+d.rep||0,0,100);
+    var ings={};INGS.forEach(function(i){
+      var v=Math.floor(+((d.ings||{})[i.id])||0);if(v>0)ings[i.id]=clamp(v,0,999)});
+    g.ings=ings;
+    var dishes=(Array.isArray(d.dishes)?d.dishes:[]).filter(function(id){return recById(id)});
+    g.dishes=dishes;
+    g.menu=dishes.filter(function(id){return (Array.isArray(d.menu)?d.menu:[]).indexOf(id)>=0});
+    g.staff=(Array.isArray(d.staff)?d.staff:[]).slice(0,3).map(function(s){return{n:String((s&&s.n)||'员工').slice(0,8),v:1}});
+    var ups={};UPS.forEach(function(u){var v=Math.round(+((d.ups||{})[u.id])||0);if(v>0)ups[u.id]=clamp(v,0,5)});
+    g.ups=ups;
+    var tal={};TALENTS.forEach(function(t){var v=Math.round(+((d.talents||{})[t.id])||0);if(v>0)tal[t.id]=clamp(v,0,99)});
+    g.talents=tal;
+    g.weather=WEATHERS.some(function(w){return w.id===d.weather})?d.weather:'sunny';
+    g.freeRd=!!d.freeRd;
+    g.prestiges=clamp(Math.round(+d.prestiges||0),0,999);
+    g.total={served:clamp(Math.round(+(d.total&&d.total.served)||0),0,1e9),
+             earned:clamp(Math.round(+(d.total&&d.total.earned)||0),0,1e12)};
+    return g;
+  }catch(e){return null}
+}
+function loadGame(){
+  try{
+    var raw=localStorage.getItem(SAVE_KEY);if(!raw)return null;
+    return sanitizeSave(JSON.parse(raw));
+  }catch(e){return null}
+}
+
+/* ================= 同步中心（移动端数据可靠性 + 跨设备迁移） =================
+ * 方式① 设备内自动备份：每次存档防抖镜像到 IndexedDB，localStorage 被系统清理（如 iOS
+ *        Safari 对网页 7 天未访问的清理，主屏 PWA 豁免）后启动时自动恢复。
+ * 方式② 跨设备同步码：CNM1. 前缀 + base64(JSON) 的纯文本码，复制/下载后导入另一台设备。
+ * 失败降级：IndexedDB 不可用 → 标记 dead 仅用 localStorage；剪贴板失败 → 手动复制降级；
+ * 导入数据未通过 sanitizeSave 校验 → 拒绝落盘。
+ * ==================================================================== */
+const SYNC={
+  db:null,dead:false,opening:false,_t:null,
+  mirrorSoon(){
+    var self=this;
+    if(this._t)return;
+    this._t=setTimeout(function(){self._t=null;self.mirror()},600);
+  },
+  mirror(){
+    var self=this;
+    if(this.dead)return;
+    if(this.db){this.doMirror();return}
+    if(this.opening)return;
+    this.opening=true;
+    this.open().then(function(db){
+      self.opening=false;
+      if(!db){self.dead=true;return}
+      self.db=db;self.doMirror();
+    });
+  },
+  open(){
+    return new Promise(function(res){
+      try{
+        if(!window.indexedDB){res(null);return}
+        var rq=indexedDB.open('cyberNightMarket',1);
+        var done=false;
+        rq.onupgradeneeded=function(e){e.target.result.createObjectStore('kv')};
+        rq.onsuccess=function(e){if(!done){done=true;res(e.target.result)}};
+        rq.onerror=function(){if(!done){done=true;res(null)}};
+        rq.onblocked=function(){if(!done){done=true;res(null)}};
+        setTimeout(function(){if(!done){done=true;res(null)}},2500);
+      }catch(e){res(null)}
+    });
+  },
+  doMirror(){
+    try{
+      var s=localStorage.getItem(SAVE_KEY);if(!s)return;
+      var tx=this.db.transaction('kv','readwrite');
+      var st=tx.objectStore('kv');
+      st.put(s,'save');
+      var l=localStorage.getItem(LIFE_KEY);if(l)st.put(l,'life');
+      try{localStorage.setItem('cyberNightMarket_bkT',String(Date.now()))}catch(e){}
+    }catch(e){this.dead=true}
+  },
+  idbGet(key){
+    var db=this.db;
+    if(!db)return Promise.resolve(null);
+    return new Promise(function(res){
+      try{
+        var rq=db.transaction('kv','readonly').objectStore('kv').get(key);
+        rq.onsuccess=function(){res(rq.result||null)};
+        rq.onerror=function(){res(null)};
+      }catch(e){res(null)}
+    });
+  },
+  boot(){
+    var self=this;
+    var hasLocal=false;
+    try{hasLocal=!!localStorage.getItem(SAVE_KEY)}catch(e){}
+    if(hasLocal){this.mirrorSoon();return} // 本地档健在：仅做种子镜像
+    this.open().then(function(db){
+      if(!db){self.dead=true;return Promise.resolve(null)}
+      self.db=db;
+      return self.idbGet('save');
+    }).then(function(raw){
+      if(!raw)return null;
+      try{
+        var g=sanitizeSave(JSON.parse(raw));
+        if(!g)return null;
+        localStorage.setItem(SAVE_KEY,raw);
+        return self.idbGet('life').then(function(l){
+          if(l){try{JSON.parse(l);localStorage.setItem(LIFE_KEY,l)}catch(e){}}
+          return true;
+        });
+      }catch(e){return null}
+    }).then(function(ok){
+      if(ok){
+        loadLife();refreshMenuContinue();
+        toast('🔄 检测到本地数据丢失，已从设备备份恢复进度','gold');
+      }
+    }).catch(function(){});
+  },
+  buildCode(){
+    var payload={v:1,t:Date.now(),save:null,life:null};
+    try{payload.save=localStorage.getItem(SAVE_KEY)}catch(e){}
+    try{payload.life=localStorage.getItem(LIFE_KEY)}catch(e){}
+    if(!payload.save)throw new Error('no-save');
+    return 'CNM1.'+btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  },
+  parseCode(str){
+    str=String(str||'').trim().replace(/\s+/g,'');
+    if(str.indexOf('CNM1.')!==0)throw new Error('同步码格式不正确（应以 CNM1. 开头）');
+    var p;
+    try{p=JSON.parse(decodeURIComponent(escape(atob(str.slice(5)))))}
+    catch(e){throw new Error('同步码已损坏，无法解析')}
+    if(!p||p.v!==1||!p.save)throw new Error('同步码内容无效');
+    var g=null;
+    try{g=sanitizeSave(JSON.parse(p.save))}catch(e){g=null}
+    if(!g)throw new Error('存档数据校验未通过');
+    p._g=g;p._life=null;
+    if(p.life){try{p._life=JSON.parse(p.life)}catch(e){p._life=null}}
+    return p;
+  },
+  relTime(t){
+    if(!t)return '暂无';
+    var s=Math.max(0,(Date.now()-t)/1000);
+    if(s<60)return '刚刚';
+    if(s<3600)return Math.floor(s/60)+' 分钟前';
+    if(s<86400)return Math.floor(s/3600)+' 小时前';
+    return Math.floor(s/86400)+' 天前';
+  },
+  statusLine(){
+    var t=0;try{t=+localStorage.getItem('cyberNightMarket_bkT')||0}catch(e){}
+    var st=this.dead?'不可用（仅本地存储）':'已开启（IndexedDB 冗余备份）';
+    return '<div class="syncStat">💾 自动备份：'+st+'<br>🕐 上次备份：'+this.relTime(t)+'</div>';
+  },
+  mergeLife(parsedLife){
+    if(!parsedLife)return;
+    try{
+      var cur={};
+      try{cur=JSON.parse(localStorage.getItem(LIFE_KEY)||'{}')||{}}catch(e){cur={}}
+      var a=cur.life||{},b=parsedLife.life||{};
+      var m={served:Math.max(+a.served||0,+b.served||0),
+             earned:Math.max(+a.earned||0,+b.earned||0),
+             brands:Math.max(+a.brands||0,+b.brands||0),
+             bestDay:Math.max(+a.bestDay||0,+b.bestDay||0)};
+      var ach={};
+      [cur.ach||{},parsedLife.ach||{}].forEach(function(src,k){
+        ACHS.forEach(function(a){if(src[a.id])ach[a.id]=1});
+      });
+      localStorage.setItem(LIFE_KEY,JSON.stringify({life:m,ach:ach}));
+    }catch(e){}
+  },
+};
+
+/* ---- 同步 UI ---- */
+function showSyncCenter(){
+  showModal('<h3>🔄 数据同步</h3>'+SYNC.statusLine()+
+    '<div class="mtxt">本游戏为纯离线单机，<b>不联网上传任何数据</b>。提供两种同步方式：<br>'+
+    '① <b>设备内自动备份</b>——每次存档自动冗余到 IndexedDB，浏览器清理本地数据后启动时自动恢复；<br>'+
+    '② <b>跨设备同步码</b>——复制同步码发送到另一台设备（手机/电脑）粘贴导入，即可迁移全部进度。</div>'+
+    '<div class="mops" style="margin-top:12px"><div class="btn mg" data-act="syncExport">📤 导出同步码</div></div>'+
+    '<div><textarea id="syncIn" placeholder="把另一台设备导出的同步码粘贴到这里…（CNM1.xxxx）"></textarea></div>'+
+    '<div class="mops"><div class="btn yl" data-act="syncImportGo">📥 导入同步码</div>'+
+    '<div class="btn" data-act="closeModal">关闭</div></div>',true);
+}
+function showSyncExport(){
+  var code='';
+  try{code=SYNC.buildCode()}
+  catch(e){toast('还没有存档可导出，先开局吧','rd');return}
+  try{localStorage.setItem('cyberNightMarket_bkT',String(Date.now()))}catch(e){}
+  showModal('<h3>📤 同步码已生成</h3>'+
+    '<div class="mtxt">包含：本局进度 + 生涯战绩 + 成就。复制后通过微信 / 备忘录 / 剪贴板发送到另一台设备。</div>'+
+    '<div><textarea id="syncOut" readonly>'+esc(code)+'</textarea></div>'+
+    '<div class="mops"><div class="btn gr" data-act="syncCopy">📋 复制</div>'+
+    '<div class="btn yl" data-act="syncDownload">⬇️ 下载文件</div>'+
+    '<div class="btn" data-act="syncCenter">返回</div></div>',true);
+}
+function doSyncCopy(){
+  var ta=document.getElementById('syncOut');if(!ta)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(function(){toast('📋 已复制到剪贴板','gr')},function(){fallbackCopy(ta)});
+  }else fallbackCopy(ta);
+}
+function fallbackCopy(ta){
+  try{
+    ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+    var ok=document.execCommand&&document.execCommand('copy');
+    toast(ok?'📋 已复制到剪贴板':'请长按文本框全选手动复制',ok?'gr':'gold');
+  }catch(e){toast('请长按文本框全选手动复制','gold')}
+}
+function doSyncDownload(){
+  try{
+    var ta=document.getElementById('syncOut');if(!ta)return;
+    var blob=new Blob([ta.value],{type:'text/plain'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='cyber-night-market-backup.txt';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},400);
+    toast('⬇️ 已开始下载备份文件','gr');
+  }catch(e){toast('下载失败，请直接复制同步码','rd')}
+}
+function doSyncImport(){
+  var ta=document.getElementById('syncIn');if(!ta)return;
+  var p;
+  try{p=SYNC.parseCode(ta.value)}
+  catch(e){toast(e.message||'导入失败','rd');SFX.bad();return}
+  var local=null;
+  try{local=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){local=null}
+  var lg=local?sanitizeSave(local):null;
+  if(lg){ // 冲突处理：绝不静默覆盖，弹窗二选一
+    var recImport=(p._g.day>lg.day)||((p._g.day===lg.day)&&(p._g.total.earned+p._g.money)>(lg.total.earned+lg.money));
+    syncPending=p;
+    showModal('<h3>⚔️ 检测到进度冲突</h3>'+
+      '<div class="mtxt">'+
+      '<div class="settle-line"><span>本机进度</span><b>第'+lg.day+'天 · ¥'+fmt(lg.money)+'</b></div>'+
+      '<div class="settle-line"><span>导入进度</span><b>第'+p._g.day+'天 · ¥'+fmt(p._g.money)+'</b></div>'+
+      '<div style="margin-top:8px">'+(recImport
+        ?'推荐使用<b>导入进度</b>（更新的存档）。覆盖后两台设备的生涯战绩与成就将自动合并取最大值。'
+        :'本机进度较新。仍可强制使用导入进度，生涯战绩与成就同样自动合并。')+'</div></div>'+
+      '<div class="mops"><div class="btn mg" data-act="syncPick" data-id="import">使用导入进度</div>'+
+      '<div class="btn gr" data-act="syncPick" data-id="local">保留本机</div></div>',true);
+  }else{
+    applyImport(p);
+  }
+}
+function doSyncPick(mode){
+  var p=syncPending;syncPending=null;
+  if(!p){closeModal();return}
+  if(mode==='import')applyImport(p);
+  else{toast('已保留本机进度');closeModal()}
+}
+function applyImport(p){
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify(p._g));
+    SYNC.mergeLife(p._life);
+    loadLife();
+    try{localStorage.setItem('cyberNightMarket_bkT',String(Date.now()))}catch(e){}
+    SYNC.mirrorSoon();
+    closeModal();
+    toast('📥 导入成功！即将刷新…','gr');
+    setTimeout(function(){try{location.reload()}catch(e){}},700);
+  }catch(e){toast('导入失败：存储不可用','rd')}
+}
+
+/* ================= 屏幕 / 弹窗 / Toast ================= */
+const SCRS=['scr-menu','scr-day','scr-night','scr-settle','scr-over'];
+function showScreen(id){
+  SCRS.forEach(function(s){var el=$('#'+s);if(el)el.classList.toggle('hidden',s!==id)});
+  $('#topbar').classList.toggle('hidden',id==='scr-menu');
+}
+function showModal(html,canDismiss){
+  $('#modalCard').innerHTML=html;
+  $('#modalBox').classList.remove('hidden');
+  $('#modalBox').dataset.canDismiss=canDismiss?'1':'';
+}
+function closeModal(){$('#modalBox').classList.add('hidden')}
+$('#modalBox').addEventListener('click',function(e){
+  if(e.target===this&&this.dataset.canDismiss==='1')closeModal();
+});
+function toast(msg,color){
+  var t=document.createElement('div');
+  t.className='toast '+(color||'');t.textContent=msg;
+  $('#toasts').appendChild(t);
+  setTimeout(function(){t.classList.add('out');setTimeout(function(){t.remove()},320)},2200);
+}
+
+/* ================= 顶栏 ================= */
+function renderTop(){
+  if(!G)return;
+  $('#tbDay').textContent='第'+G.day+'天';
+  $('#tbRep').textContent='📟 '+Math.round(G.rep);
+  var mv=Math.round(G.money);
+  var me=$('#tbMoney');
+  if(window._pm!==undefined&&mv!==window._pm&&me){
+    me.classList.remove('flash-up','flash-down');
+    void me.offsetWidth; // 重启动画
+    me.classList.add(mv>window._pm?'flash-up':'flash-down');
+  }
+  window._pm=mv;
+  me.textContent='¥'+fmt(mv);
+  var bb=$('#btnBgm');if(bb)bb.classList.toggle('off',!BGM.on);
+  var sb=$('#btnSound');if(sb)sb.textContent=SOUND.on?'🔊':'🔇';
+}
+
+/* ================= 主菜单 ================= */
+function renderMenuLife(){
+  $('#menuLife').innerHTML=
+    '<div class="ml">🏆 生涯战绩：接待 '+fmt(LIFE.served)+' 位 · 累计 ¥'+fmt(LIFE.earned)+' · 分店 '+LIFE.brands+' 家 · 单晚最佳 ¥'+fmt(LIFE.bestDay)+'</div>'+
+    '<div class="achs">'+ACHS.map(function(a){
+      return '<span class="'+(ACH[a.id]?'on':'')+'" title="'+a.n+'：'+a.d+'">'+a.ic+'</span>'}).join('')+'</div>';
+}
+function refreshMenuContinue(){
+  var has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}
+  $('#btnContinue').classList.toggle('hidden',!has);
+}
+
+/* ================= 引导 ================= */
+const GUIDE_PAGES=[
+  {title:'🌆 欢迎来到赛博夜市',html:
+    '<p style="text-align:center;color:var(--dim)">2124 年 · 霓虹闪烁的夜市</p>'+
+    '<div class="gloop">'+
+      '<div class="gnode">🛒<span>白天经营</span></div><span class="arr">→</span>'+
+      '<div class="gnode">🌙<span>夜晚出摊</span></div><span class="arr">→</span>'+
+      '<div class="gnode">✨<span>三选一天赋</span></div><span class="arr">→</span>'+
+      '<div class="gnode">🧾<span>7天一租</span></div>'+
+    '</div>'+
+    '<p style="text-align:center">大厂第 996 天，你把工牌拍在桌上，在赛博夜市租下一个角落。<br>初始资金 <b style="color:var(--yl)">¥300</b>。活下去，做大它。</p>'},
+  {title:'🛒 白天 · 经营决策',html:
+    '<div class="grow2"><span class="gi">🛒</span><div><b>进货</b>：没食材做不了菜。看天气囤货——雨天主食好卖，热浪天饮品抢手。</div></div>'+
+    '<div class="grow2"><span class="gi">🔬</span><div><b>研发</b>：两种食材碰撞新配方，28 种组合里有 17 道真菜。<b style="color:var(--yl)">首次研发全免费！</b></div></div>'+
+    '<div class="grow2"><span class="gi">📋</span><div><b>菜单</b>：研发出新菜后上架，顾客只会点菜单里的东西。只放高价菜=只赚大钱。</div></div>'+
+    '<div class="grow2"><span class="gi">👨‍🍳</span><div><b>后厨 + 设备</b>：雇员工自动干活（上限 3 人），升级摊位和设备滚雪球。</div></div>'+
+    '<div class="grow2"><span class="gi">🎯</span><div><b>悬赏</b>：每天随机小目标，完成拿奖金 + 声望，短中长期都有奔头。</div></div>'+
+    '<div class="gpage-tip">🌦️ 每天天气不同——看天调整策略才能赚大钱</div>'},
+  {title:'🌙 夜晚 · 实时出摊',html:
+    '<div class="grow2"><span class="gi">👆</span><div><b>接单</b>：点击排队顾客 → 开始做菜 → 做完自动收钱。雇了员工后他们<b>自动干活</b>，与你并行！</div></div>'+
+    '<div class="grow2"><span class="gi">💢</span><div><b>耐心条</b>：顾客排队久了会不耐烦，耐心归零就气跑并<b>扣声望</b>。忙不过来时优先做耐心低的。</div></div>'+
+    '<div class="grow2"><span class="gi">👥</span><div><b>顾客图鉴</b>：💼打工人·量大 / 🎓大学生·穷但好伺候 / 💻程序员·急性子 / 🤖机器人·气跑不扣声望 / 📸网红·土豪 / 🌧️网抑云人·甜品控</div></div>'+
+    '<div class="gpage-tip">⌨️ 快捷键：空格 暂停 / S 极速 — 手忙脚乱时按空格冷静一下</div>'},
+  {title:'✨ 生存法则',html:
+    '<div class="grow2"><span class="gi">✨</span><div><b>天赋构筑</b>：每晚打烊三选一天赋，永久生效。叠加组合成流派——暴击流、小费流、自动流、涨客流…</div></div>'+
+    '<div class="grow2"><span class="gi">🧾</span><div><b>交租压力</b>：每 7 天房东机械臂上门收租，租金指数上涨。声望归零 = <b style="color:var(--rd)">破产出局</b>。</div></div>'+
+    '<div class="grow2"><span class="gi">🏪</span><div><b>连锁分店</b>：攒够 ¥3000 开分店，重开新档但永久 +30% 收入。分店越多越富。</div></div>'+
+    '<div class="grow2"><span class="gi">🎁</span><div><b>新手福利</b>：首次研发全免费（失败也不花钱），开局就能捣鼓出一道高价新菜。</div></div>'+
+    '<div class="gpage-tip">🏆 成就系统记录你的每一个里程碑：连锁萌芽、单晚破千、客流破万…主菜单可见生涯战绩</div>'},
+];
+let guidePage=0,guideMode='new';
+function showGuide(mode){guideMode=mode||'new';guidePage=0;renderGuide()}
+function renderGuide(){
+  var p=GUIDE_PAGES[guidePage],last=guidePage===GUIDE_PAGES.length-1;
+  var dots=GUIDE_PAGES.map(function(_,i){return '<span class="gdot'+(i===guidePage?' on':'')+'"></span>'}).join('');
+  var ops='';
+  if(guidePage>0)ops+='<div class="btn" data-act="guidePrev">← 上一页</div>';
+  if(!last)ops+='<div class="btn yl" data-act="guideNext">下一页 →</div>';
+  else ops+='<div class="btn mg" data-act="'+(guideMode==='new'?'startFirst':'closeModal')+'">'+(guideMode==='new'?'🔥 开摊！':'明白了')+'</div>';
+  showModal('<h3>'+p.title+'</h3><div class="mtxt">'+p.html+'</div><div class="gdots">'+dots+'</div><div class="mops" style="margin-top:10px">'+ops+'</div>',guideMode!=='new');
+}
+function guideNext(){if(guidePage<GUIDE_PAGES.length-1){guidePage++;SFX.click();renderGuide()}}
+function guidePrev(){if(guidePage>0){guidePage--;SFX.click();renderGuide()}}
+
+/* ================= 开局 / 继续 ================= */
+function newGame(){
+  G=freshG();rollWeather();rollQuest();
+  saveGame();
+  SFX.click();
+  showGuide('new');
+}
+function startFirst(){
+  closeModal();
+  renderDay();
+  toast('🛒 先去进货，再研发一道招牌菜吧','cy');
+}
+function continueGame(){
+  if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
+  renderDay();
+}
+function toMenu(){
+  if(NIGHT&&NIGHT.active&&NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
+  if(NIGHT)NIGHT.active=false;
+  saveGame();
+  renderMenuLife();refreshMenuContinue();
+  showScreen('scr-menu');
+}
+function askReset(){
+  showModal('<h3>🗑️ 清除存档？</h3><div class="mtxt">本局进度与生涯战绩（含成就）都会清零，无法恢复。</div>'+
+    '<div class="mops"><div class="btn rd" data-act="resetGo">确认清除</div><div class="btn" data-act="closeModal">再想想</div></div>',true);
+}
+function resetGo(){
+  try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LIFE_KEY)}catch(e){}
+  G=null;LIFE={served:0,earned:0,brands:0,bestDay:0};ACH={};
+  closeModal();refreshMenuContinue();renderMenuLife();
+  toast('🗑️ 存档已清除','rd');
+}
+
+/* ================= 天气 / 悬赏 ================= */
+function rollWeather(){G.weather=choice(WEATHERS).id}
+function wx(){return WEATHERS.find(function(w){return w.id===G.weather})||WEATHERS[0]}
+function wxMult(cat){var m=wx().mult;return m[cat]||1}
+function rollQuest(){
+  var tpl=choice([['serve','接待 {x} 位顾客',40],['sell','卖出 {x} 份菜',50],['earn','单晚营收 ¥{x}',60]]);
+  var d=G.day,x,rew;
+  if(tpl[0]==='serve'){x=6+d;rew=tpl[2]+d*8}
+  else if(tpl[0]==='sell'){x=8+d;rew=tpl[2]+d*8}
+  else{x=100+d*30;rew=tpl[2]+d*10}
+  G.quest={k:tpl[0],txt:tpl[1].replace('{x}',x),x:x,rew:rew,done:false};
+}
+function checkQuest(){
+  if(!G.quest||G.quest.done||!NIGHT)return;
+  var q=G.quest,ok=false;
+  if(q.k==='serve')ok=NIGHT.servedN>=q.x;
+  else if(q.k==='sell')ok=NIGHT.sellN>=q.x;
+  else if(q.k==='earn')ok=NIGHT.earn>=q.x;
+  if(ok){
+    q.done=true;G.money+=q.rew;
+    SFX.quest();setTimeout(function(){SFX.bigcoin()},350);
+    toast('🎯 悬赏达成！+'+q.rew,'gold');
+    renderTop();
+  }
+}
+
+/* ================= 成就 ================= */
+function checkAch(id){
+  if(ACH[id])return;
+  var a=ACHS.find(function(x){return x.id===id});
+  if(!a)return;
+  ACH[id]=1;saveLife();
+  toast(a.ic+' 成就解锁：'+a.n,'gold');
+  SFX.quest();
+}
+
+/* ================= 白天渲染 ================= */
+const TABS=[['buy','🛒 进货'],['rd','🔬 研发'],['menu','📋 菜单'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
+function renderDay(){
+  showScreen('scr-day');
+  var W=wx();
+  $('#dayStatus').innerHTML=
+    '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
+    '<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>'+
+    (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
+    (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
+  $('#tabs').innerHTML=TABS.map(function(t){
+    return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'">'+t[1]+'</div>'}).join('');
+  renderDayPanel();
+  renderTop();
+}
+function menuNeed(){
+  var need={};
+  G.menu.forEach(function(id){var r=recById(id);if(r){need[r.a]=1;need[r.b]=1}});
+  return Object.keys(need).filter(function(k){return !(G.ings[k]>0)});
+}
+function renderDayPanel(){
+  var el=$('#dayPanel');
+  if(TAB==='buy')el.innerHTML=panelBuy();
+  else if(TAB==='rd')el.innerHTML=panelRd();
+  else if(TAB==='menu')el.innerHTML=panelMenu();
+  else if(TAB==='staff')el.innerHTML=panelStaff();
+  else el.innerHTML=panelUps();
+}
+function panelBuy(){
+  var lack=menuNeed();
+  var h=lack.length?'<div class="lackTip">⚠️ 缺料预警：'+lack.map(ingN).join('、')+' —— 菜单里有菜做不了！</div>':'';
+  var bulk=(G.talents.bulk||0)>0;
+  h+='<div class="ing-grid">'+INGS.map(function(i){
+    var price=Math.max(1,Math.round(i.c*(bulk?.8:1)));
+    return '<div class="ing-card"><b>'+i.ic+' '+i.n+'</b>'+
+      '<div class="stk">库存 <b>'+(G.ings[i.id]||0)+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+'</div>'+
+      '<div class="ops"><div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="1">+1</div>'+
+      '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10">+10</div></div></div>'}).join('')+'</div>';
+  h+='<div class="panel-tip">🌦️ 看天进货：雨天多囤主食料（面粉/米），热浪天多囤饮品料（水果/冰/茶）</div>';
+  return h;
+}
+function panelRd(){
+  var chips=INGS.map(function(i){
+    var sel=(RD1===i.id||RD2===i.id)?' sel':'';
+    return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+'</div>'}).join('');
+  var picked=RD1?ingN(RD1)+(RD2?' + '+ingN(RD2):''):'（点选两种食材）';
+  var known=RECIPES.filter(function(r){return G.dishes.indexOf(r.id)>=0});
+  var h='<div class="rd-chips">'+chips+'</div>'+
+    '<div class="rd-status">已选：<b>'+esc(picked)+'</b><br>已解锁菜品：'+known.length+' / '+RECIPES.length+(G.freeRd?' · <b style="color:var(--gr)">本次免费</b>':'')+'</div>'+
+    '<div class="btn yl" data-act="rdGo"'+((!RD1||!RD2)?' disabled':'')+'>🧪 开始研发</div>';
+  if(known.length){
+    h+='<div class="panel-tip">已掌握：'+known.map(function(r){return r.n}).join('、')+'</div>';
+  }
+  h+='<div class="panel-tip">28 种两两组合中藏着 17 道真菜，其余是黑暗料理…</div>';
+  return h;
+}
+function panelMenu(){
+  if(!G.dishes.length)return '<div class="panel-tip">还没有菜品——先去「🔬 研发」捣鼓出第一道菜！</div>';
+  return G.dishes.map(function(id){
+    var r=recById(id),on=G.menu.indexOf(id)>=0;
+    return '<div class="dish-card"><div class="dn"><b>'+(CAT_IC[r.cat]||'')+' '+r.n+'</b><span>售价 ¥'+r.p+'</span></div>'+
+      '<div class="btn sm '+(on?'rd':'gr')+'" data-act="menuTg" data-id="'+id+'">'+(on?'下架':'上架')+'</div></div>'}).join('')+
+    '<div class="panel-tip">顾客只点已上架的菜（最多 8 道）。高价菜赚得多，但要备足料！</div>';
+}
+function panelStaff(){
+  var h=G.staff.length?G.staff.map(function(s){
+    return '<div class="staff-row"><span>👨‍🍳 '+esc(s.n)+'</span><span style="color:var(--dim)">自动帮厨 · 效率 ×1</span></div>'}).join(''):
+    '<div class="staff-row"><span style="color:var(--dim)">后厨空荡荡……</span></div>';
+  var full=G.staff.length>=3;
+  var cost=Math.round(80*Math.pow(1.8,G.staff.length));
+  h+='<div class="btn yl" data-act="hire"'+(full?' disabled':'')+'>'+(full?'后厨满员（3/3）':'👨‍🍳 招聘员工 ¥'+fmt(cost)+'（'+G.staff.length+'/3）')+'</div>';
+  h+='<div class="panel-tip">员工会在夜晚自动接单做菜，与你并行出餐。人多力量大！</div>';
+  return h;
+}
+function panelUps(){
+  var h=UPS.map(function(u){
+    var lvl=G.ups[u.id]||0,maxed=lvl>=5;
+    var cost=Math.round(u.base*Math.pow(1.7,lvl));
+    return '<div class="up-card"><div class="dn"><b>'+u.ic+' '+u.n+' Lv'+lvl+'</b><span>'+u.d+'</span></div>'+
+      '<div class="btn sm gr" data-act="buyUp" data-id="'+u.id+'"'+(maxed||G.money<cost?' disabled':'')+'>'+(maxed?'已满级':'升级 ¥'+fmt(cost))+'</div></div>'}).join('');
+  var pOK=G.money>=3000;
+  h+='<div class="prestige-box"><div class="btn '+(pOK?'mg':'')+'" data-act="prestige"'+(pOK?'':' disabled')+'>🏪 开设连锁分店 ¥3000（重开新档，永久 +30% 收入）</div></div>';
+  return h;
+}
+
+/* ================= 白天操作 ================= */
+function buyIng(fid,n){
+  var ing=INGS.find(function(i){return i.id===fid});if(!ing)return;
+  var cost=Math.max(1,Math.round(ing.c*((G.talents.bulk||0)>0?.8:1)))*n;
+  if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
+  G.money-=cost;G.ings[fid]=(G.ings[fid]||0)+n;
+  SFX.buy();saveGame();renderDayPanel();renderTop();
+}
+function rdPick(fid){
+  if(RD1===fid)RD1=null;
+  else if(RD2===fid)RD2=null;
+  else if(!RD1)RD1=fid;
+  else if(!RD2)RD2=fid;
+  else{RD1=RD2;RD2=fid}
+  SFX.click();renderDayPanel();
+}
+function rdGo(){
+  if(!RD1||!RD2){toast('先选两种食材','rd');return}
+  var key=[RD1,RD2].sort().join('+');
+  var hit=RECIPES.find(function(r){return r.key===key});
+  var free=G.freeRd;
+  if(hit){
+    if(G.dishes.indexOf(hit.id)>=0){
+      toast('已掌握：'+hit.n,'gr');SFX.click();
+    }else{
+      G.dishes.push(hit.id);
+      SFX.bigcoin();
+      showModal('<h3>🧪 研发成功！</h3><div class="mtxt"><p style="text-align:center;font-size:30px;margin:10px 0">🍜</p>'+
+        '<p style="text-align:center"><b style="font-size:16px;color:var(--yl)">'+hit.n+'</b></p>'+
+        '<p style="text-align:center">'+(CAT_IC[hit.cat]||'')+' · 售价 ¥'+hit.p+'</p>'+
+        '<p style="text-align:center;color:var(--dim);font-size:12px">记得去「📋 菜单」上架才会有人点！</p></div>'+
+        '<div class="mops"><div class="btn mg" data-act="closeModal">太好了</div></div>');
+      if(G.dishes.length>=RECIPES.length)checkAch('dish17');
+    }
+  }else{
+    toast('🧪 黑暗料理！试吃员当场宕机','rd');SFX.bad();
+  }
+  if(free){G.freeRd=false}
+  else if(hit){G.ings[RD1]=(G.ings[RD1]||1)-1;G.ings[RD2]=(G.ings[RD2]||1)-1}
+  else if((G.talents.insp||0)>0){toast('✨ 灵感迸发：食材完好无损','gr')}
+  else{
+    if(Math.random()<.5)G.ings[RD1]=Math.max(0,(G.ings[RD1]||0)-1);
+    if(Math.random()<.5)G.ings[RD2]=Math.max(0,(G.ings[RD2]||0)-1);
+  }
+  RD1=null;RD2=null;
+  saveGame();renderDayPanel();renderTop();
+}
+function menuTg(rid){
+  var i=G.menu.indexOf(rid);
+  if(i>=0)G.menu.splice(i,1);
+  else{
+    if(G.menu.length>=8){toast('菜单最多上架 8 道','rd');return}
+    G.menu.push(rid);
+  }
+  SFX.click();saveGame();renderDayPanel();
+}
+function hireStaff(){
+  if(G.staff.length>=3)return;
+  var cost=Math.round(80*Math.pow(1.8,G.staff.length));
+  if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
+  G.money-=cost;
+  var name=choice(STAFF_NAMES);
+  G.staff.push({n:name,v:1});
+  SFX.hire();toast('👨‍🍳 '+name+' 入职！夜晚自动帮厨','gr');
+  saveGame();renderDayPanel();renderTop();
+}
+function buyUp(uid){
+  var u=UPS.find(function(x){return x.id===uid});if(!u)return;
+  var lvl=G.ups[uid]||0;if(lvl>=5)return;
+  var cost=Math.round(u.base*Math.pow(1.7,lvl));
+  if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
+  G.money-=cost;G.ups[uid]=lvl+1;
+  SFX.upgrade();toast(u.ic+' '+u.n+' → Lv'+(lvl+1),'gr');
+  saveGame();renderDayPanel();renderTop();
+}
+function askPrestige(){
+  if(G.money<3000){toast('开设分店需要 ¥3000','rd');return}
+  showModal('<h3>🏪 开设连锁分店</h3><div class="mtxt">花 ¥3000 重开新档：本局资金、菜品、设备清零，'+
+    '但<b>永久 +30% 收入</b>，还能继续开店叠 buff。生涯战绩与成就保留。</div>'+
+    '<div class="mops"><div class="btn mg" data-act="prestigeGo">确认开店</div><div class="btn" data-act="closeModal">再想想</div></div>',true);
+}
+function doPrestigeGo(){
+  LIFE.brands++;checkAch('brand');
+  var p=(G.prestiges||0)+1;
+  G=freshG();G.prestiges=p;G.money=300+300*p;
+  rollWeather();rollQuest();
+  saveGame();closeModal();
+  toast('🏪 分店开业！收入永久 +'+(p*30)+'%','gold');
+  renderDay();
+}
+
+/* ================= 夜晚引擎 ================= */
+function cookSpeed(){return 1+.3*(G.ups.stove||0)+.35*(G.talents.auto||0)}
+function flowMult(){
+  return (1+.2*(G.talents.flow||0))*(1+.15*(G.ups.stall||0))*(wx().flow||1);
+}
+function pickDish(cust){
+  var ms=G.menu.map(recById).filter(Boolean);
+  if(!ms.length)return null;
+  var pref=ms.filter(function(r){return cust.cats.indexOf(r.cat)>=0});
+  return choice(pref.length?pref:ms);
+}
+function startNight(){
+  if(!G.menu.length){toast('先在「📋 菜单」上架菜品，不然没人点单','rd');return}
+  var can=G.menu.some(function(id){
+    var r=recById(id);return r&&(G.ings[r.a]||0)>0&&(G.ings[r.b]||0)>0});
+  if(!can){toast('食材全空了，先进货再开摊','rd');return}
+  SFX.init();SFX.whoosh();
+  NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
+    cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null};
+  saveGame();
+  renderNight();showScreen('scr-night');
+  NIGHT.timer=setInterval(nightTick,100);
+}
+function spawnGap(){return (3.6/flowMult())*(0.75+Math.random()*.5)}
+function spawnCust(){
+  if(NIGHT.queue.length>=6)return;
+  var cust=choice(CUSTS);
+  var dish=pickDish(cust);if(!dish)return;
+  NIGHT.cid++;
+  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat;
+  NIGHT.queue.push({cid:NIGHT.cid,type:cust.id,n:cust.n,e:cust.e,pay:cust.pay,tip:cust.tip,
+    noRep:!!cust.noRep,dish:dish.id,dishN:dish.n,price:dish.p,cat:dish.cat,pat:patMax,patMax:patMax});
+  renderNight();
+}
+function loseCust(c){
+  NIGHT.queue=NIGHT.queue.filter(function(x){return x.cid!==c.cid});
+  var pen=2;
+  if(c.noRep)pen=0;
+  if((G.talents.shield||0)>0&&Math.random()<.5)pen=0;
+  G.rep=Math.max(0,G.rep-pen);NIGHT.lostN++;
+  if(pen>0)toast(c.e+' '+c.n+' 气跑了！声望 -2','rd');
+  else toast(c.e+' '+c.n+' 气跑了（未扣声望）','rd');
+  renderNight();renderTop();
+  if(G.rep<=0)gameOver('rep');
+}
+function cookFor(cid){
+  if(!NIGHT||!NIGHT.active)return;
+  var c=NIGHT.queue.find(function(x){return x.cid===cid});
+  if(!c)return;
+  if(NIGHT.cooking.some(function(k){return k.cid===cid}))return;
+  var rec=recById(c.dish);if(!rec)return;
+  if((G.ings[rec.a]||0)<1||(G.ings[rec.b]||0)<1){
+    toast('缺料：'+ingN(rec.a)+' / '+ingN(rec.b)+' —— 白天记得进货','rd');
+    SFX.bad();return;
+  }
+  G.ings[rec.a]--;G.ings[rec.b]--;
+  SFX.cook();
+  NIGHT.cooking.push({cid:cid,type:c.type,dish:c.dish,dishN:c.dish,price:c.price,cat:c.cat,prog:0,need:2.5});
+  renderNight();
+}
+function serveOut(k){
+  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!==k});
+  NIGHT.queue=NIGHT.queue.filter(function(c){return c.cid!==k.cid});
+  var cust=CUSTS.find(function(c){return c.id===k.type})||CUSTS[0];
+  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0));
+  var crit=Math.random()<Math.min(.45,.15*(G.talents.crit||0));
+  if(crit)base*=2;
+  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0));
+  var gain=Math.round(base+tip);
+  G.money+=gain;NIGHT.earn+=gain;
+  NIGHT.servedN++;NIGHT.sellN++;
+  G.rep=Math.min(100,G.rep+.4*(1+.2*(G.ups.spk||0)));
+  if(crit)toast('⚡ 暴击！双倍收入','gold');
+  SFX.coin();renderTop();checkQuest();
+  checkAch('first');
+  if(G.money>=5000)checkAch('rich');
+  renderNight();
+}
+function nightTick(){
+  if(!NIGHT||!NIGHT.active)return;
+  if(!NIGHT.paused){
+    var dt=.1*NIGHT.speed;
+    NIGHT.t+=dt;
+    NIGHT.spawnT-=dt;
+    if(NIGHT.spawnT<=0){spawnCust();NIGHT.spawnT=spawnGap()}
+    NIGHT.queue.slice().forEach(function(c){c.pat-=dt;if(c.pat<=0)loseCust(c)});
+    NIGHT.cooking.slice().forEach(function(k){k.prog+=dt*cookSpeed();if(k.prog>=k.need)serveOut(k)});
+    if(G.staff.length&&NIGHT.queue.length){
+      NIGHT.staffT-=dt;
+      if(NIGHT.staffT<=0){
+        NIGHT.staffT=3.2/(1+.35*(G.talents.auto||0))/G.staff.length;
+        var c=NIGHT.queue.find(function(c){
+          var r=recById(c.dish);return r&&(G.ings[r.a]||0)>0&&(G.ings[r.b]||0)>0});
+        if(c)cookFor(c.cid);
+      }
+    }
+    if(NIGHT.t>=NIGHT.dur){endNight();return}
+  }
+  updateNightTick();
+}
+function renderNight(){
+  if(!NIGHT)return;
+  var remain=Math.max(0,NIGHT.dur-NIGHT.t);
+  $('#nightClock').textContent=Math.ceil(remain)+'s';
+  $('#timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
+  $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  $('#cookList').innerHTML=NIGHT.cooking.map(function(k){
+    return '<div class="cook"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div></div>'}).join('');
+  $('#custQueue').innerHTML=NIGHT.queue.map(function(c){
+    var rec=recById(c.dish);
+    var lack=!rec||(G.ings[rec.a]||0)<1||(G.ings[rec.b]||0)<1;
+    return '<div class="cust'+(lack?' noing':'')+'" data-cid="'+c.cid+'">'+
+      '<div class="cAv">'+c.e+'</div><div class="cInfo"><b>'+c.n+'</b>'+
+      '<span>'+esc(c.dishN)+' ¥'+c.price+'</span>'+
+      '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div></div>'}).join('');
+  $('#staffLine').textContent=G.staff.length?('👨‍🍳 员工 '+G.staff.map(function(s){return s.n}).join('、')+' 正在自动帮厨'):'';
+  var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
+  var sb=document.querySelector('[data-act="nspeed"]');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
+}
+function updateNightTick(){
+  if(!NIGHT)return;
+  var remain=Math.max(0,NIGHT.dur-NIGHT.t),low=remain<30;
+  var ck=$('#nightClock');
+  ck.textContent=Math.ceil(remain)+'s';
+  ck.classList.toggle('warn',low);
+  var tb=$('#timebar');
+  tb.firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
+  tb.classList.toggle('warn',low);
+  $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  NIGHT.queue.forEach(function(c,i){
+    var el=$('#custQueue').children[i];
+    if(el){var b=el.querySelector('.pbar i');if(b)b.style.width=(100*Math.max(0,c.pat)/c.patMax)+'%'}
+  });
+  NIGHT.cooking.forEach(function(k,i){
+    var el=$('#cookList').children[i];
+    if(el){var b=el.querySelector('.cbar i');if(b)b.style.width=Math.round(100*Math.min(1,k.prog/k.need))+'%'}
+  });
+}
+function togglePause(){if(!NIGHT||!NIGHT.active)return;NIGHT.paused=!NIGHT.paused;renderNight()}
+function toggleSpeed(){if(!NIGHT||!NIGHT.active)return;NIGHT.speed=NIGHT.speed===1?2.5:1;renderNight()}
+document.addEventListener('keydown',function(e){
+  if(!NIGHT||!NIGHT.active)return;
+  if(e.code==='Space'){e.preventDefault();togglePause()}
+  else if(e.key==='s'||e.key==='S')toggleSpeed();
+});
+
+/* ================= 结算 / 天赋 / 下一天 ================= */
+function endNight(){
+  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
+  NIGHT.active=false;
+  LIFE.served+=NIGHT.servedN;LIFE.earned+=NIGHT.earn;
+  if(NIGHT.earn>LIFE.bestDay)LIFE.bestDay=Math.round(NIGHT.earn);
+  if(NIGHT.earn>=500)checkAch('n500');
+  if(NIGHT.earn>=1000)checkAch('n1000');
+  if(LIFE.served>=100)checkAch('s100');
+  G.total.served+=NIGHT.servedN;G.total.earned+=NIGHT.earn;
+  saveLife();saveGame();
+  $('#settleBody').innerHTML=
+    '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
+    '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
+    '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
+    '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
+    '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
+    (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
+  $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>';
+  showScreen('scr-settle');
+}
+function offerTalents(){
+  var pool=TALENTS.slice(),opts=[];
+  while(opts.length<3&&pool.length)opts.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
+  showModal('<h3>✨ 天赋觉醒 · 三选一</h3><div class="mtxt">'+
+    opts.map(function(t){return '<div class="tal" data-act="pickTalent" data-id="'+t.id+'">'+
+      '<span class="ti">'+t.ic+'</span><div><b>'+t.n+'</b><span>'+t.d+'</span></div></div>'}).join('')+'</div>');
+}
+function pickTalent(id){
+  var t=TALENTS.find(function(x){return x.id===id});if(!t)return;
+  G.talents[id]=(G.talents[id]||0)+1;
+  SFX.talent();
+  closeModal();
+  toast(t.ic+' 获得天赋：'+t.n,'gold');
+  nextDay();
+}
+function nextDay(){
+  var nd=G.day+1,rentPaid=0;
+  if(nd>1&&(nd-1)%7===0){
+    var rent=Math.round(150*Math.pow(1.6,(nd-1)/7-1));
+    if(G.money<rent){gameOver('rent');return}
+    G.money-=rent;rentPaid=rent;
+  }
+  G.day=nd;
+  if(nd>7)checkAch('d7');
+  rollWeather();rollQuest();
+  saveGame();
+  renderDay();
+  if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid),'rd');
+}
+
+/* ================= 结局 ================= */
+function gameOver(reason){
+  if(NIGHT&&NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
+  if(NIGHT)NIGHT.active=false;
+  SFX.gameover();
+  saveLife();
+  try{localStorage.removeItem(SAVE_KEY)}catch(e){}
+  var reasonTxt=reason==='rent'
+    ?'🧾 交不起房租，摊位被房东机械臂整个搬走了……'
+    :'📉 声望崩盘，再也没有客人愿意来你的摊……';
+  $('#overBody').innerHTML=
+    '<div class="mtxt" style="margin-bottom:14px">'+reasonTxt+'</div>'+
+    '<div class="settle-line"><span>📅 存活天数</span><b>'+(G?G.day:1)+' 天</b></div>'+
+    '<div class="settle-line"><span>🎫 累计接待</span><b>'+fmt(LIFE.served)+' 位</b></div>'+
+    '<div class="settle-line"><span>💰 生涯累计</span><b>¥'+fmt(LIFE.earned)+'</b></div>'+
+    '<div class="settle-line"><span>🏪 连锁分店</span><b>'+LIFE.brands+' 家</b></div>';
+  renderMenuLife();refreshMenuContinue();
+  showScreen('scr-over');
+}
+
+/* ================= 全局点击分发 ================= */
+document.addEventListener('click',function(e){
+  SFX.init();BGM.ensure();
+  var custEl=e.target.closest('.cust[data-cid]');
+  if(custEl&&!$('#scr-night').classList.contains('hidden')){
+    cookFor(+custEl.dataset.cid);return;
+  }
+  var el=e.target.closest('[data-act]');
+  if(!el)return;
+  if(el.hasAttribute('disabled'))return;
+  var act=el.dataset.act,id=el.dataset.id;
+  switch(act){
+    case 'newgame':newGame();break;
+    case 'continue':continueGame();break;
+    case 'guide':showGuide('ref');break;
+    case 'guideNext':guideNext();break;
+    case 'guidePrev':guidePrev();break;
+    case 'startFirst':startFirst();break;
+    case 'closeModal':SFX.click();closeModal();break;
+    case 'askReset':askReset();break;
+    case 'resetGo':resetGo();break;
+    case 'toMenu':SFX.click();toMenu();break;
+    case 'again':newGame();break;
+    case 'bgm':
+      if(BGM.toggle())toast('🎵 背景音乐已开启','gold');
+      else toast('🎵 背景音乐已关闭');
+      renderTop();break;
+    case 'sound':
+      SOUND.on=!SOUND.on;SFX.click();
+      if(SOUND.on)SFX.coin();
+      renderTop();break;
+    case 'tab':TAB=id||'buy';SFX.click();renderDayPanel();
+      document.querySelectorAll('#tabs .tab').forEach(function(t){
+        t.classList.toggle('on',t.dataset.id===TAB)});break;
+    case 'buy':buyIng(id,+el.dataset.n||1);break;
+    case 'rdPick':rdPick(id);break;
+    case 'rdGo':rdGo();break;
+    case 'menuTg':menuTg(id);break;
+    case 'hire':hireStaff();break;
+    case 'buyUp':buyUp(id);break;
+    case 'prestige':askPrestige();break;
+    case 'prestigeGo':doPrestigeGo();break;
+    case 'startNight':startNight();break;
+    case 'npause':togglePause();break;
+    case 'nspeed':toggleSpeed();break;
+    case 'talents':SFX.click();offerTalents();break;
+    case 'pickTalent':pickTalent(id);break;
+    case 'syncCenter':showSyncCenter();break;
+    case 'syncExport':showSyncExport();break;
+    case 'syncCopy':doSyncCopy();break;
+    case 'syncDownload':doSyncDownload();break;
+    case 'syncImportGo':doSyncImport();break;
+    case 'syncPick':doSyncPick(id);break;
+  }
+});
+
+/* ================= PWA（manifest 内联，零外部文件） ================= */
+(function(){
+  try{
+    var svg="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>"+
+      "<rect width='512' height='512' rx='96' fill='#06060f'/>"+
+      "<rect x='24' y='24' width='464' height='464' rx='76' fill='none' stroke='#22d3ee' stroke-width='10'/>"+
+      "<rect x='24' y='24' width='464' height='464' rx='76' fill='none' stroke='#ff40ff' stroke-width='4' opacity='.6'/>"+
+      "<text x='256' y='235' font-size='160' text-anchor='middle'>🍜</text>"+
+      "<text x='256' y='410' font-size='110' text-anchor='middle' fill='#ff40ff' font-family='sans-serif' font-weight='bold'>夜市</text></svg>";
+    var icon='data:image/svg+xml,'+encodeURIComponent(svg);
+    var man={name:'赛博夜市 · 深夜摆摊模拟器',short_name:'赛博夜市',start_url:'.',display:'standalone',
+      background_color:'#06060f',theme_color:'#06060f',
+      icons:[{src:icon,sizes:'512x512',type:'image/svg+xml',purpose:'any'}]};
+    var l=document.createElement('link');l.rel='manifest';
+    l.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(man));
+    document.head.appendChild(l);
+    var ap=document.createElement('link');ap.rel='apple-touch-icon';ap.href=icon;
+    document.head.appendChild(ap);
+  }catch(e){}
+})();
+
+/* ================= 启动 ================= */
+(function init(){
+  loadLife();
+  renderMenuLife();
+  refreshMenuContinue();
+  showScreen('scr-menu');
+  SYNC.boot(); // 启动同步：本地档丢失时从 IndexedDB 恢复，否则做种子镜像
+})();
+</script>
+</body>
+</html>
