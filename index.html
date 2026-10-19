@@ -121,6 +121,7 @@ h3{margin-bottom:10px;font-size:17px}
 .skin-b{font-size:11px;color:var(--yl)}
 .skin-card.cur .skin-b{color:var(--cy)}
 #shareCv canvas{width:100%;border-radius:12px;border:1px solid var(--line)}
+.wx.ltd{background:linear-gradient(90deg,rgba(255,170,0,.18),rgba(255,64,255,.18));border:1px solid rgba(255,170,0,.45)}
 body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
 body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
@@ -262,7 +263,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.9.6 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.9.7 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -1046,7 +1047,9 @@ function renderDay(){
   var evb=$('#eventBanner'),E=ev();
   if(E){evb.classList.remove('hidden');evb.innerHTML=E.ic+' <b>'+E.n+'</b> —— '+E.d}
   else evb.classList.add('hidden');
+  var L=ltd();
   $('#dayStatus').innerHTML=
+    (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     '<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>'+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
@@ -1264,9 +1267,18 @@ function doPrestigeGo(){
 
 /* ================= 夜晚引擎 ================= */
 function cookSpeed(){return 1+.3*(G.ups.stove||0)+.35*(G.talents.auto||0)}
-function flowMult(){
-  var E=ev(),ef=E?(E.flow||1):1;
-  return (1+.2*(G.talents.flow||0))*(1+.15*(G.ups.stall||0))*(wx().flow||1)*ef;
+const LTD=[
+  {id:'halloween',n:'万圣夜市',ic:'🎃',d:'万圣夜小费 +50%',tip:1.5,w:function(d){return d.getMonth()===9&&d.getDate()===31}},
+  {id:'d11',n:'双十一大促',ic:'🛍️',d:'双十一客流 +30%',flow:1.3,w:function(d){return d.getMonth()===10&&d.getDate()===11}},
+  {id:'ny',n:'跨年盛典',ic:'🎆',d:'12.31-1.1 营收 +30%',earn:1.3,w:function(d){return (d.getMonth()===11&&d.getDate()===31)||(d.getMonth()===0&&d.getDate()===1)}},
+  {id:'weekend',n:'周末狂欢',ic:'🎊',d:'周末营收 +20%',earn:1.2,w:function(d){return d.getDay()===0||d.getDay()===6}},
+];
+function ltd(d){d=d||new Date();return LTD.find(function(e){return e.w(d)})||null}
+function ltdEarn(){var L=ltd();return L?(L.earn||1):1}
+function ltdTip(){var L=ltd();return L?(L.tip||1):1}
+function ltdFlow(){var L=ltd();return L?(L.flow||1):1}
+function flowMult(){  var E=ev(),ef=E?(E.flow||1):1;
+  return (1+.2*(G.talents.flow||0))*(1+.15*(G.ups.stall||0))*(wx().flow||1)*ef*ltdFlow();
 }
 function pickDish(cust){
   var ms=G.menu.map(recById).filter(Boolean);
@@ -1333,10 +1345,10 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   NIGHT.queue=NIGHT.queue.filter(function(c){return c.cid!==k.cid});
   var cust=CUSTS.find(function(c){return c.id===k.type})||CUSTS[0];
   var E=ev();
-  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*mastMult(k.dish)*staffPriceMult();
+  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*mastMult(k.dish)*staffPriceMult()*ltdEarn();
   var crit=Math.random()<Math.min(.45,.15*(G.talents.crit||0));
   if(crit)base*=2;
-  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1);
+  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*ltdTip();
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
   var gain=Math.round(base+tip);
   G.money+=gain;NIGHT.earn+=gain;
