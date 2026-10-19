@@ -120,6 +120,7 @@ h3{margin-bottom:10px;font-size:17px}
 .skin-n{font-size:12px;font-weight:700;margin-bottom:3px}
 .skin-b{font-size:11px;color:var(--yl)}
 .skin-card.cur .skin-b{color:var(--cy)}
+#shareCv canvas{width:100%;border-radius:12px;border:1px solid var(--line)}
 body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
 body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
@@ -261,7 +262,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.9.5 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.9.6 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -1420,8 +1421,67 @@ document.addEventListener('keydown',function(e){
 });
 
 /* ================= 结算 / 天赋 / 下一天 ================= */
-function endNight(){
-  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
+var LAST_CV=null;
+function shareText(){
+  return '🌃 赛博夜市 · 第'+G.day+'天战报\n'+
+    '💰 今晚营收 ¥'+fmt(NIGHT.earn)+'\n'+
+    '🎫 接待 '+NIGHT.servedN+' 位 | 💢 气跑 '+NIGHT.lostN+' 位\n'+
+    '📟 声望 '+Math.round(G.rep)+' | 🏪 连锁 '+(G.prestiges||0)+' 家\n'+
+    '⭐ 生涯总营收 ¥'+fmt(LIFE.earned)+'\n'+
+    '一起来摆摊！https://xuancheng2024.github.io/cyber-night-market/';
+}
+function shareCard(){
+  var cv=document.createElement('canvas');cv.width=600;cv.height=840;
+  var x=cv.getContext('2d');
+  var pal={sakura:['#1a0f14','#ff8fab','#ffd6e0'],jade:['#08130f','#34d399','#a7f3d0'],violet:['#100a1c','#c084fc','#f0abfc'],gold:['#171205','#f59e0b','#fde68a']};
+  var p=pal[G.skin]||['#0a0a1a','#ff40ff','#22d3ee'];
+  var g=x.createLinearGradient(0,0,0,840);g.addColorStop(0,p[0]);g.addColorStop(1,'#050510');
+  x.fillStyle=g;x.fillRect(0,0,600,840);
+  x.strokeStyle=p[1];x.lineWidth=4;x.strokeRect(14,14,572,812);
+  x.textAlign='center';
+  x.fillStyle=p[1];x.font='bold 44px sans-serif';x.fillText('🌃 赛博夜市',300,92);
+  x.fillStyle='#888';x.font='20px sans-serif';x.fillText('深夜摆摊模拟器',300,128);
+  x.fillStyle='#fff';x.font='bold 30px sans-serif';x.fillText('第 '+G.day+' 天 · 战报',300,196);
+  x.fillStyle=p[2];x.font='bold 72px sans-serif';x.fillText('¥'+fmt(NIGHT.earn),300,302);
+  x.fillStyle='#aaa';x.font='20px sans-serif';x.fillText('今晚营收',300,340);
+  x.strokeStyle='#333';x.lineWidth=1;x.beginPath();x.moveTo(70,370);x.lineTo(530,370);x.stroke();
+  var rows=[['🎫 接待顾客',NIGHT.servedN+' 位'],['💢 气跑',NIGHT.lostN+' 位'],['🎯 悬赏',G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成'],['📟 声望',String(Math.round(G.rep))],['🏪 连锁分店',(G.prestiges||0)+' 家'],['⭐ 生涯总营收','¥'+fmt(LIFE.earned)]];
+  x.font='24px sans-serif';
+  rows.forEach(function(r,i){
+    var y=424+i*52;
+    x.fillStyle='#888';x.textAlign='left';x.fillText(r[0],90,y);
+    x.fillStyle='#fff';x.textAlign='right';x.fillText(r[1],510,y);
+  });
+  x.textAlign='center';x.fillStyle=p[1];x.font='bold 22px sans-serif';
+  x.fillText('一起来摆摊！赛博夜市等你挑战',300,792);
+  LAST_CV=cv;
+  SFX.quest();
+  showModal('<h3>📸 分享卡片</h3><div class="mtxt"><div id="shareCv"></div></div>'+
+    '<div class="mops"><div class="btn" data-act="saveCard">💾 保存图片</div>'+
+    '<div class="btn mg" data-act="copyCard">📋 复制成绩</div></div>'+
+    '<div class="mops"><div class="btn" data-act="closeModal">返回</div></div>',true);
+  $('#shareCv').appendChild(cv);
+}
+function saveCard(){
+  if(!LAST_CV)return;
+  var a=document.createElement('a');
+  a.download='赛博夜市-第'+G.day+'天.png';
+  a.href=LAST_CV.toDataURL('image/png');
+  a.click();
+  toast('💾 图片已保存','gr');
+}
+function copyCard(){
+  var t=shareText();
+  function done(){toast('📋 成绩已复制，去粘贴分享吧！','gr')}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){fallback()})}
+  else fallback();
+  function fallback(){
+    var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done()}catch(e){toast('复制失败，请手动截图','rd')}
+    ta.remove();
+  }
+}
+function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
   NIGHT.active=false;
   LIFE.served+=NIGHT.servedN;LIFE.earned+=NIGHT.earn;
   if(NIGHT.earn>LIFE.bestDay)LIFE.bestDay=Math.round(NIGHT.earn);
@@ -1437,7 +1497,7 @@ function endNight(){
     '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
     '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
     (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
-  $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>';
+  $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div><div class="btn big" data-act="shareCard" style="margin-top:8px">📸 生成分享卡片</div>';
   showScreen('scr-settle');
 }
 function offerTalents(){
@@ -1531,6 +1591,9 @@ document.addEventListener('click',function(e){
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
+    case 'shareCard':shareCard();break;
+    case 'saveCard':saveCard();break;
+    case 'copyCard':copyCard();break;
     case 'prestige':askPrestige();break;
     case 'prestigeGo':doPrestigeGo();break;
     case 'startNight':startNight();break;
