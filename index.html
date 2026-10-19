@@ -107,6 +107,7 @@ h3{margin-bottom:10px;font-size:17px}
 .dex-ing{font-size:10px;color:var(--dim);margin-bottom:2px}
 .dex-p{font-size:12px;color:var(--yl);font-weight:700}
 .mst{font-size:10px;margin-left:3px}
+.stsk{font-size:10px;background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-left:4px}
 .cMood{font-size:11px;margin-left:2px}
 .ing-card b{font-size:13px}
 .ing-card .stk{font-size:11px;color:var(--dim);margin:3px 0 8px}
@@ -244,7 +245,7 @@ h3{margin-bottom:10px;font-size:17px}
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.9.3 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.9.4 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -491,6 +492,15 @@ const WEATHERS=[
 ];
 
 const STAFF_NAMES=['阿伟','小美','老王','阿强','小林','大熊','阿飞','酱酱','阿杰','琪琪'];
+const STAFF_SKILLS=[
+  {id:'fast',n:'快手',ic:'🔥',d:'帮厨速度 +50%'},
+  {id:'hype',n:'揽客',ic:'📣',d:'顾客耐心流失 -15%'},
+  {id:'chef',n:'大厨',ic:'🍳',d:'全店售价 +4%'},
+];
+function staffSk(s){return STAFF_SKILLS.find(function(k){return k.id===s.sk})||null}
+function staffSpeedSum(){return G.staff.reduce(function(a,s){return a+(s.sk==='fast'?1.5:1)},0)}
+function staffPatMult(){var n=G.staff.filter(function(s){return s.sk==='hype'}).length;return Math.pow(.85,n)}
+function staffPriceMult(){var n=G.staff.filter(function(s){return s.sk==='chef'}).length;return 1+.04*n}
 
 const ACHS=[
   {id:'first', n:'开张首单',d:'卖出第一份菜',        ic:'🥇'},
@@ -543,7 +553,7 @@ function sanitizeSave(d){
     var dishes=(Array.isArray(d.dishes)?d.dishes:[]).filter(function(id){return recById(id)});
     g.dishes=dishes;
     g.menu=dishes.filter(function(id){return (Array.isArray(d.menu)?d.menu:[]).indexOf(id)>=0});
-    g.staff=(Array.isArray(d.staff)?d.staff:[]).slice(0,3).map(function(s){return{n:String((s&&s.n)||'员工').slice(0,8),v:1}});
+    g.staff=(Array.isArray(d.staff)?d.staff:[]).slice(0,3).map(function(s){var sk=(s&&STAFF_SKILLS.some(function(k){return k.id===s.sk}))?s.sk:choice(STAFF_SKILLS).id;return{n:String((s&&s.n)||'员工').slice(0,8),v:1,sk:sk}});
     var ups={};UPS.forEach(function(u){var v=Math.round(+((d.ups||{})[u.id])||0);if(v>0)ups[u.id]=clamp(v,0,5)});
     g.ups=ups;
     var tal={};TALENTS.forEach(function(t){var v=Math.round(+((d.talents||{})[t.id])||0);if(v>0)tal[t.id]=clamp(v,0,99)});
@@ -934,7 +944,7 @@ function checkLogin(){
 function continueGame(){  if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
   var offlineMin=Math.floor((Date.now()-G.lastTs)/60000);
   if(offlineMin>=30){
-    var rate=8+(G.ups.stall||0)*3+(G.staff.length||0)*5;
+    var rate=8+(G.ups.stall||0)*3+staffSpeedSum()*5;
     var cap=Math.min(offlineMin,480);
     var gain=Math.round(rate*cap/60*(1+.3*(G.prestiges||0)));
     if(gain>0){
@@ -1089,7 +1099,7 @@ function panelDex(){
 }
 function panelStaff(){
   var h=G.staff.length?G.staff.map(function(s){
-    return '<div class="staff-row"><span>👨‍🍳 '+esc(s.n)+'</span><span style="color:var(--dim)">自动帮厨 · 效率 ×1</span></div>'}).join(''):
+    return '<div class="staff-row"><span>👨‍🍳 '+esc(s.n)+(staffSk(s)?' <span class="stsk">'+staffSk(s).ic+staffSk(s).n+'</span>':'')+'</span><span style="color:var(--dim)">'+(staffSk(s)?staffSk(s).d:'自动帮厨')+'</span></div>'}).join(''):
     '<div class="staff-row"><span style="color:var(--dim)">后厨空荡荡……</span></div>';
   var full=G.staff.length>=3;
   var cost=Math.round(80*Math.pow(1.8,G.staff.length));
@@ -1174,8 +1184,9 @@ function hireStaff(){
   if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
   G.money-=cost;
   var name=choice(STAFF_NAMES);
-  G.staff.push({n:name,v:1});
-  SFX.hire();toast('👨‍🍳 '+name+' 入职！夜晚自动帮厨','gr');
+  var sk=choice(STAFF_SKILLS);
+  G.staff.push({n:name,v:1,sk:sk.id});
+  SFX.hire();toast('👨‍🍳 '+name+' 入职！技能：'+sk.ic+sk.n+'（'+sk.d+'）','gr');
   saveGame();renderDayPanel();renderTop();
 }
 function buyUp(uid){
@@ -1275,7 +1286,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   NIGHT.queue=NIGHT.queue.filter(function(c){return c.cid!==k.cid});
   var cust=CUSTS.find(function(c){return c.id===k.type})||CUSTS[0];
   var E=ev();
-  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*mastMult(k.dish);
+  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*mastMult(k.dish)*staffPriceMult();
   var crit=Math.random()<Math.min(.45,.15*(G.talents.crit||0));
   if(crit)base*=2;
   var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1);
@@ -1300,12 +1311,13 @@ function nightTick(){
     NIGHT.t+=dt;
     NIGHT.spawnT-=dt;
     if(NIGHT.spawnT<=0){spawnCust();NIGHT.spawnT=spawnGap()}
-    NIGHT.queue.slice().forEach(function(c){c.pat-=dt;if(c.pat<=0)loseCust(c)});
+    var spm=staffPatMult();
+    NIGHT.queue.slice().forEach(function(c){c.pat-=dt*spm;if(c.pat<=0)loseCust(c)});
     NIGHT.cooking.slice().forEach(function(k){k.prog+=dt*cookSpeed();if(k.prog>=k.need)serveOut(k)});
     if(G.staff.length&&NIGHT.queue.length){
       NIGHT.staffT-=dt;
       if(NIGHT.staffT<=0){
-        NIGHT.staffT=3.2/(1+.35*(G.talents.auto||0))/G.staff.length;
+        NIGHT.staffT=3.2/(1+.35*(G.talents.auto||0))/Math.max(1,staffSpeedSum());
         var c=NIGHT.queue.find(function(c){
           var r=recById(c.dish);return r&&(G.ings[r.a]||0)>0&&(G.ings[r.b]||0)>0});
         if(c)cookFor(c.cid);
@@ -1330,7 +1342,7 @@ function renderNight(){
       '<div class="cAv">'+c.e+'</div><div class="cInfo"><b>'+c.n+' <span class="cMood">'+moodEmo(c)+'</span></b>'+
       '<span>'+esc(c.dishN)+' ¥'+c.price+'</span>'+
       '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div></div>'}).join('');
-  $('#staffLine').textContent=G.staff.length?('👨‍🍳 员工 '+G.staff.map(function(s){return s.n}).join('、')+' 正在自动帮厨'):'';
+  $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
   var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
   var sb=document.querySelector('[data-act="nspeed"]');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
 }
