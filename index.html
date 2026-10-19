@@ -108,6 +108,22 @@ h3{margin-bottom:10px;font-size:17px}
 .dex-p{font-size:12px;color:var(--yl);font-weight:700}
 .mst{font-size:10px;margin-left:3px}
 .stsk{font-size:10px;background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-left:4px}
+.skin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.skin-card{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;cursor:pointer}
+.skin-card.cur{border-color:var(--cy);box-shadow:0 0 8px rgba(34,211,238,.3)}
+.skin-sw{height:26px;border-radius:6px;margin-bottom:6px}
+.skin-sw[data-sk=default]{background:linear-gradient(90deg,#22d3ee,#ff40ff)}
+.skin-sw[data-sk=sakura]{background:linear-gradient(90deg,#ffb3c6,#ff8fab)}
+.skin-sw[data-sk=jade]{background:linear-gradient(90deg,#5eead4,#34d399)}
+.skin-sw[data-sk=violet]{background:linear-gradient(90deg,#a78bfa,#c084fc)}
+.skin-sw[data-sk=gold]{background:linear-gradient(90deg,#fcd34d,#f59e0b)}
+.skin-n{font-size:12px;font-weight:700;margin-bottom:3px}
+.skin-b{font-size:11px;color:var(--yl)}
+.skin-card.cur .skin-b{color:var(--cy)}
+body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
+body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
+body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
+body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--cy:#fcd34d;--mg:#f59e0b;--yl:#fde68a;--gr:#d4d46a;--rd:#ff8d6d;--dim:#a89468}
 .cMood{font-size:11px;margin-left:2px}
 .ing-card b{font-size:13px}
 .ing-card .stk{font-size:11px;color:var(--dim);margin:3px 0 8px}
@@ -245,7 +261,7 @@ h3{margin-bottom:10px;font-size:17px}
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.9.4 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.9.5 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -521,7 +537,7 @@ let LIFE={served:0,earned:0,brands:0,bestDay:0},ACH={};
 
 function freshG(){return{day:1,money:300,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0},over:null,
-  lastTs:Date.now(),event:null,mastery:{},loginDates:[]}}
+  lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default']}}
 
 /* ================= 存档 ================= */
 function saveGame(){try{if(G&&!G.over){G.lastTs=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
@@ -568,6 +584,10 @@ function sanitizeSave(d){
     var mst={};RECIPES.forEach(function(r){var v=Math.round(+((d.mastery||{})[r.id])||0);if(v>0)mst[r.id]=clamp(v,0,99999)});
     g.mastery=mst;
     g.loginDates=(Array.isArray(d.loginDates)?d.loginDates:[]).filter(function(s){return typeof s==='string'&&/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)}).slice(-60);
+    g.skin=SKINS.some(function(s){return s.id===d.skin})?d.skin:'default';
+    g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
+    if(g.skinsOwned.indexOf('default')<0)g.skinsOwned.push('default');
+    if(g.skinsOwned.indexOf(g.skin)<0)g.skin='default';
     return g;
   }catch(e){return null}
 }
@@ -1019,6 +1039,7 @@ function checkAch(id){
 /* ================= 白天渲染 ================= */
 const TABS=[['buy','🛒 进货'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
 function renderDay(){
+  applySkin();
   showScreen('scr-day');
   var W=wx();
   var evb=$('#eventBanner'),E=ev();
@@ -1107,14 +1128,39 @@ function panelStaff(){
   h+='<div class="panel-tip">员工会在夜晚自动接单做菜，与你并行出餐。人多力量大！</div>';
   return h;
 }
-function panelUps(){
-  var h=UPS.map(function(u){
+const SKINS=[
+  {id:'default',n:'赛博霓虹',ic:'🌃',cost:0},
+  {id:'sakura',n:'樱花粉巷',ic:'🌸',cost:500},
+  {id:'jade',n:'翡翠清风',ic:'🍃',cost:500},
+  {id:'violet',n:'暗夜紫罗兰',ic:'🔮',cost:800},
+  {id:'gold',n:'鎏金豪庭',ic:'👑',cost:1500},
+];
+function applySkin(){document.body.dataset.skin=(G&&G.skin)||'default'}
+function buySkin(id){
+  var s=SKINS.find(function(x){return x.id===id});if(!s)return;
+  if(G.skinsOwned.indexOf(id)>=0){
+    if(G.skin===id)return;
+    G.skin=id;applySkin();SFX.click();toast(s.ic+' 已换上「'+s.n+'」','gr');
+  }else{
+    if(G.money<s.cost){toast('资金不足','rd');SFX.bad();return}
+    G.money-=s.cost;G.skinsOwned.push(id);G.skin=id;applySkin();
+    SFX.bigcoin();toast(s.ic+' 购入并换上「'+s.n+'」！','gr');
+  }
+  saveGame();renderDayPanel();renderTop();
+}
+function panelUps(){  var h=UPS.map(function(u){
     var lvl=G.ups[u.id]||0,maxed=lvl>=5;
     var cost=Math.round(u.base*Math.pow(1.7,lvl));
     return '<div class="up-card"><div class="dn"><b>'+u.ic+' '+u.n+' Lv'+lvl+'</b><span>'+u.d+'</span></div>'+
       '<div class="btn sm gr" data-act="buyUp" data-id="'+u.id+'"'+(maxed||G.money<cost?' disabled':'')+'>'+(maxed?'已满级':'升级 ¥'+fmt(cost))+'</div></div>'}).join('');
   var pOK=G.money>=3000;
   h+='<div class="prestige-box"><div class="btn '+(pOK?'mg':'')+'" data-act="prestige"'+(pOK?'':' disabled')+'>🏪 开设连锁分店 ¥3000（重开新档，永久 +30% 收入）</div></div>';
+  h+='<div class="panel-tip" style="margin-top:14px">🎨 摊位装修（点击购买/换装）</div><div class="skin-grid">'+SKINS.map(function(s){
+    var owned=G.skinsOwned.indexOf(s.id)>=0,cur=G.skin===s.id;
+    return '<div class="skin-card'+(cur?' cur':'')+'" data-act="buySkin" data-id="'+s.id+'">'+
+      '<div class="skin-sw" data-sk="'+s.id+'"></div>'+
+      '<div class="skin-n">'+s.ic+' '+s.n+'</div>'+
+      '<div class="skin-b">'+(cur?'使用中':owned?'点击换装':'¥'+fmt(s.cost))+'</div></div>'}).join('')+'</div>';
   return h;
 }
 
@@ -1484,6 +1530,7 @@ document.addEventListener('click',function(e){
     case 'menuTg':menuTg(id);break;
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
+    case 'buySkin':buySkin(id);break;
     case 'prestige':askPrestige();break;
     case 'prestigeGo':doPrestigeGo();break;
     case 'startNight':startNight();break;
@@ -1524,6 +1571,8 @@ document.addEventListener('click',function(e){
 /* ================= 启动 ================= */
 (function init(){
   loadLife();
+  var _bs=loadGame();if(_bs)G=_bs;
+  applySkin();
   renderMenuLife();
   refreshMenuContinue();
   showScreen('scr-menu');
