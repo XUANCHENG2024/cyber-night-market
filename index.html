@@ -122,6 +122,13 @@ h3{margin-bottom:10px;font-size:17px}
 .skin-card.cur .skin-b{color:var(--cy)}
 #shareCv canvas{width:100%;border-radius:12px;border:1px solid var(--line)}
 .wx.ltd{background:linear-gradient(90deg,rgba(255,170,0,.18),rgba(255,64,255,.18));border:1px solid rgba(255,170,0,.45)}
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ach-card{display:flex;gap:8px;background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px;align-items:center}
+.ach-card.locked{opacity:.5}
+.ach-card.got{border-color:var(--gold,rgba(255,200,50,.6));box-shadow:0 0 8px rgba(255,200,50,.15)}
+.ach-ic{font-size:26px;min-width:34px;text-align:center}
+.ach-n{font-size:12px;font-weight:700}
+.ach-d{font-size:10px;color:var(--dim);margin-top:2px}
 body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
 body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
@@ -263,7 +270,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.9.7 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.9.8 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -521,14 +528,24 @@ function staffPatMult(){var n=G.staff.filter(function(s){return s.sk==='hype'}).
 function staffPriceMult(){var n=G.staff.filter(function(s){return s.sk==='chef'}).length;return 1+.04*n}
 
 const ACHS=[
-  {id:'first', n:'开张首单',d:'卖出第一份菜',        ic:'🥇'},
-  {id:'n500',  n:'小有名气',d:'单晚营收 ¥500',       ic:'🌙'},
-  {id:'n1000', n:'单晚破千',d:'单晚营收 ¥1000',      ic:'💸'},
-  {id:'s100',  n:'百客盈门',d:'累计接待 100 位顾客', ic:'🎫'},
-  {id:'dish17',n:'满汉全席',d:'研发全部 17 道菜',    ic:'📜'},
-  {id:'brand', n:'连锁萌芽',d:'开出第一家分店',      ic:'🏪'},
-  {id:'d7',    n:'一周生还',d:'撑过第 7 天交租',     ic:'📅'},
-  {id:'rich',  n:'万贯家财',d:'持有 ¥5000',          ic:'🏦'},
+  {id:'first',  n:'开张首单',  d:'卖出第一份菜',         ic:'🥇'},
+  {id:'n500',   n:'小有名气',  d:'单晚营收 ¥500',        ic:'🌙'},
+  {id:'n1000',  n:'单晚破千',  d:'单晚营收 ¥1000',       ic:'💸'},
+  {id:'s100',   n:'百客盈门',  d:'累计接待 100 位顾客',  ic:'🎫'},
+  {id:'dish17', n:'满汉全席',  d:'研发全部 17 道菜',     ic:'📜'},
+  {id:'brand',  n:'连锁萌芽',  d:'开出第一家分店',       ic:'🏪'},
+  {id:'d7',     n:'一周生还',  d:'撑过第 7 天交租',      ic:'📅'},
+  {id:'rich',   n:'万贯家财',  d:'持有 ¥5000',           ic:'🏦'},
+  {id:'login7', n:'周常达人',  d:'连续登录 7 天',        ic:'🔥'},
+  {id:'sk3',    n:'后厨大师',  d:'集齐 3 名带技能员工',  ic:'👨‍🍳'},
+  {id:'skin5',  n:'审美在线',  d:'拥有 5 款皮肤',        ic:'🎨'},
+  {id:'share',  n:'社交达人',  d:'首次生成分享卡片',     ic:'📸'},
+  {id:'m1',     n:'初显身手',  d:'任一道菜熟练度 ⭐',    ic:'⭐'},
+  {id:'m3',     n:'手艺超群',  d:'任一道菜熟练度 ⭐⭐⭐',ic:'⭐⭐⭐'},
+  {id:'ltd',    n:'节日之星',  d:'在限时活动日经营',     ic:'🎊'},
+  {id:'d30',    n:'月度元老',  d:'撑过第 30 天',         ic:'🏆'},
+  {id:'rich2',  n:'富甲一方',  d:'持有 ¥20000',          ic:'💎'},
+  {id:'brands3',n:'夜市帝国',  d:'开出 3 家分店',        ic:'🏙️'},
 ];
 
 /* ================= 全局状态 ================= */
@@ -961,7 +978,8 @@ function checkLogin(){
   G.money+=rw;
   toast('🎁 连续登录 '+st+' 天，奖励 ¥'+fmt(rw)+'！','gold');
   SFX.coin();
-  saveGame();
+  if(st>=7)checkAch('login7');
+  saveGame();saveLife();
 }
 function continueGame(){  if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
   var offlineMin=Math.floor((Date.now()-G.lastTs)/60000);
@@ -1120,6 +1138,9 @@ function panelDex(){
       '<div class="dex-n">'+(got?r.n:'？？？')+'</div>'+
       '<div class="dex-ing">'+(got?ingN(r.a)+' + '+ingN(r.b):'??? + ???')+'</div>'+
       '<div class="dex-p">'+(got?'¥'+r.p+(mastLvl(r.id)?' ⭐'+mastLvl(r.id):''):'')+'</div></div>'}).join('')+'</div>';
+  var unlocked=ACHS.filter(function(a){return ACH[a.id]}).length;
+  h+='<div class="panel-tip" style="margin-top:18px">🏅 成就 · '+unlocked+' / '+ACHS.length+'</div>';
+  h+='<div class="ach-grid">'+ACHS.map(function(a){var gt=!!ACH[a.id];return '<div class="ach-card'+(gt?' got':' locked')+'"><div class="ach-ic">'+(gt?a.ic:'🔒')+'</div><div class="ach-body"><div class="ach-n">'+a.n+'</div><div class="ach-d">'+a.d+'</div></div></div>'}).join('')+'</div>';
   return h;
 }
 function panelStaff(){
@@ -1150,7 +1171,9 @@ function buySkin(id){
     G.money-=s.cost;G.skinsOwned.push(id);G.skin=id;applySkin();
     SFX.bigcoin();toast(s.ic+' 购入并换上「'+s.n+'」！','gr');
   }
-  saveGame();renderDayPanel();renderTop();
+  saveGame();saveLife();renderDayPanel();renderTop();
+  if(G.skinsOwned.length>=5)checkAch('skin5');
+  if(G.staff.length>=3)checkAch('sk3');
 }
 function panelUps(){  var h=UPS.map(function(u){
     var lvl=G.ups[u.id]||0,maxed=lvl>=5;
@@ -1199,6 +1222,8 @@ function rdGo(){
     }else{
       G.dishes.push(hit.id);
       SFX.bigcoin();
+      if(G.dishes.length>=17)checkAch('dish17');
+
       showModal('<h3>🧪 研发成功！</h3><div class="mtxt"><p style="text-align:center;font-size:30px;margin:10px 0">🍜</p>'+
         '<p style="text-align:center"><b style="font-size:16px;color:var(--yl)">'+hit.n+'</b></p>'+
         '<p style="text-align:center">'+(CAT_IC[hit.cat]||'')+' · 售价 ¥'+hit.p+'</p>'+
@@ -1217,7 +1242,9 @@ function rdGo(){
     if(Math.random()<.5)G.ings[RD2]=Math.max(0,(G.ings[RD2]||0)-1);
   }
   RD1=null;RD2=null;
-  saveGame();renderDayPanel();renderTop();
+  saveGame();saveLife();renderDayPanel();renderTop();
+  if(G.skinsOwned.length>=5)checkAch('skin5');
+  if(G.staff.length>=3)checkAch('sk3');
 }
 function menuTg(rid){
   var i=G.menu.indexOf(rid);
@@ -1237,7 +1264,9 @@ function hireStaff(){
   var sk=choice(STAFF_SKILLS);
   G.staff.push({n:name,v:1,sk:sk.id});
   SFX.hire();toast('👨‍🍳 '+name+' 入职！技能：'+sk.ic+sk.n+'（'+sk.d+'）','gr');
-  saveGame();renderDayPanel();renderTop();
+  saveGame();saveLife();renderDayPanel();renderTop();
+  if(G.skinsOwned.length>=5)checkAch('skin5');
+  if(G.staff.length>=3)checkAch('sk3');
 }
 function buyUp(uid){
   var u=UPS.find(function(x){return x.id===uid});if(!u)return;
@@ -1246,7 +1275,9 @@ function buyUp(uid){
   if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
   G.money-=cost;G.ups[uid]=lvl+1;
   SFX.upgrade();toast(u.ic+' '+u.n+' → Lv'+(lvl+1),'gr');
-  saveGame();renderDayPanel();renderTop();
+  saveGame();saveLife();renderDayPanel();renderTop();
+  if(G.skinsOwned.length>=5)checkAch('skin5');
+  if(G.staff.length>=3)checkAch('sk3');
 }
 function askPrestige(){
   if(G.money<3000){toast('开设分店需要 ¥3000','rd');return}
@@ -1255,7 +1286,7 @@ function askPrestige(){
     '<div class="mops"><div class="btn mg" data-act="prestigeGo">确认开店</div><div class="btn" data-act="closeModal">再想想</div></div>',true);
 }
 function doPrestigeGo(){
-  LIFE.brands++;checkAch('brand');
+  LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');
   var p=(G.prestiges||0)+1;
   G=freshG();G.prestiges=p;G.money=300+300*p;
   rollWeather();rollEvent();rollQuest();
@@ -1297,6 +1328,7 @@ function startNight(){
   NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null};
   saveGame();
+  var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
   NIGHT.timer=setInterval(nightTick,100);
 }
@@ -1359,6 +1391,9 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   G.rep=Math.min(100,G.rep+repGain);
   if(crit)toast('⚡ 暴击！双倍收入','gold');
   SFX.coin();renderTop();checkQuest();
+  checkAch('first');
+  var m=G.mastery[k.dish]||0;if(m>=10)checkAch('m1');if(m>=70)checkAch('m3');
+  if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
   checkAch('first');
   if(G.money>=5000)checkAch('rich');
   renderNight();
@@ -1468,6 +1503,7 @@ function shareCard(){
   x.fillText('一起来摆摊！赛博夜市等你挑战',300,792);
   LAST_CV=cv;
   SFX.quest();
+  checkAch('share');
   showModal('<h3>📸 分享卡片</h3><div class="mtxt"><div id="shareCv"></div></div>'+
     '<div class="mops"><div class="btn" data-act="saveCard">💾 保存图片</div>'+
     '<div class="btn mg" data-act="copyCard">📋 复制成绩</div></div>'+
@@ -1500,6 +1536,9 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   if(NIGHT.earn>=500)checkAch('n500');
   if(NIGHT.earn>=1000)checkAch('n1000');
   if(LIFE.served>=100)checkAch('s100');
+  if(G.day>=30)checkAch('d30');
+  if((G.prestiges||0)>=3)checkAch('brands3');
+  if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
   G.total.served+=NIGHT.servedN;G.total.earned+=NIGHT.earn;
   saveLife();saveGame();
   $('#settleBody').innerHTML=
