@@ -135,6 +135,14 @@ body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
 body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--cy:#fcd34d;--mg:#f59e0b;--yl:#fde68a;--gr:#d4d46a;--rd:#ff8d6d;--dim:#a89468}
 .cMood{font-size:11px;margin-left:2px}
+.cust{position:relative}
+.cust.sp{border-color:var(--yl);box-shadow:0 0 8px rgba(255,209,102,.18)}
+.spT{font-size:9px;color:var(--yl);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prio{position:absolute;top:4px;right:4px;font-size:10px;background:var(--pan2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--cy);z-index:2}
+.cook{cursor:pointer}
+.pctl{display:flex;align-items:center;gap:4px;margin-top:5px}
+.pctl .btn{padding:2px 9px;font-size:13px}
+.pctl .pv{font-size:11px;color:var(--yl);min-width:40px;text-align:center}
 .ing-card b{font-size:13px}
 .ing-card .stk{font-size:11px;color:var(--dim);margin:3px 0 8px}
 .ing-card .stk b{color:var(--gr)}
@@ -295,7 +303,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.10.4 · 2026-10-21</div>
+    <div class="game-ver">内测版 v0.11.0 · 2026-10-21</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -334,7 +342,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
       <div class="btn" data-act="nspeed">⏩ 极速</div>
     </div>
     <div id="staffLine"></div>
-    <div class="night-tip">点击顾客接单做菜 · 空格暂停 / S 极速</div>
+    <div class="night-tip">点顾客接单 · 点烹饪👆催菜 · ⬆优先 · 空格暂停 / S 极速</div>
   </section>
 
   <section id="scr-settle" class="hidden">
@@ -521,6 +529,43 @@ const CUSTS=[
   {id:'emo',    n:'网抑云人',e:'🌧️',cats:['sw'],    pat:1.6,tip:1.0,pay:0.9},
 ];
 
+/* 特殊顾客（w=权重 · pen=气跑扣声望 · free=施舍 · steal=摸钱 · rep=服务后声望 · auraTip=在场全场小费倍率） */
+const SPECIALS=[
+  {id:'gourmet', n:'美食家',  e:'🧐',cats:['st','sw'],pat:.5,tip:5,pay:1.5,rep:2,pen:4,w:3,dsc:'挑剔阔绰：小费×5 · 服务声望+2 · 气跑声望-4'},
+  {id:'streamer',n:'探店主播',e:'📱',cats:['sw','dr'],pat:.9,tip:1.2,pay:1.2,auraTip:2,pen:2,w:2,dsc:'在场直播：全场小费×2'},
+  {id:'beggar',  n:'流浪者',  e:'🥺',cats:['st'],    pat:1.3,tip:0,pay:0,free:true,pen:0,w:3,dsc:'施舍一餐：无收入 · 声望+3'},
+  {id:'thief',   n:'摸兜客',  e:'🥷',cats:['st','dr'],pat:.9,tip:0,pay:1,steal:true,pen:0,w:2,dsc:'危险：上菜会被摸走零钱！'},
+];
+function spById(id){return SPECIALS.find(function(s){return s.id===id})||null}
+
+/* 抉择型随机事件（每天清晨概率触发，必须二选一） */
+const CHOICES=[
+  {id:'blogger',ic:'📸',n:'百万博主私信',d:'一位百万粉丝的美食博主想来探店，开口要 ¥300 推广费。',opts:[
+    {t:'💸 付钱推广（-¥300，今晚小费 ×2）',need:300,fx:{money:-300,cmod:{tip:2}}},
+    {t:'🙅 婉拒（无事发生）',fx:{}}]},
+  {id:'expiry',ic:'🥡',n:'临期食材甩卖',d:'批发商兜售临期食材：今天进货半价，但 30% 概率有客人吃坏肚子（声望 -6）。',opts:[
+    {t:'📦 拿下（进货 5 折 · 30% 概率声望 -6）',fx:{cmod:{buyDisc:.5},risk:{p:.3,rep:-6}}},
+    {t:'🙅 不要',fx:{}}]},
+  {id:'takeout',ic:'🛵',n:'外卖平台大单',d:'外卖平台甩来一笔预付款 ¥200 的大单，但今晚得分心做外卖（客流 -15%）。',opts:[
+    {t:'💰 接单（+¥200，今晚客流 ×0.85）',fx:{money:200,cmod:{flow:.85}}},
+    {t:'🙅 专心摆摊',fx:{}}]},
+  {id:'formula',ic:'🧪',n:'神秘配方兜售',d:'戴兜帽的老头掏出一张油腻纸条：「祖传配方，¥150，要不要？」',opts:[
+    {t:'📜 买下（-¥150，随机解锁一道新菜）',need:150,fx:{money:-150,dish:1}},
+    {t:'🙅 骗子吧',fx:{}}]},
+  {id:'slot',ic:'🎰',n:'街角赌局',d:'霓虹灯下有人摆开赌桌：押 ¥100，一半概率赢 ¥400。',opts:[
+    {t:'🎲 押注（-¥100，50% 概率 +¥400）',need:100,fx:{money:-100,gamble:{p:.5,win:400}}},
+    {t:'🙅 十赌九输',fx:{}}]},
+  {id:'promo',ic:'📢',n:'吆喝大促销',d:'今晚扯开嗓子吆喝揽客：客流 +30%，但顾客更急躁（耐心 -20%）。',opts:[
+    {t:'📣 吆喝起来（客流 ×1.3 · 耐心 ×0.8）',fx:{cmod:{flow:1.3,pat:.8}}},
+    {t:'😌 照常营业',fx:{}}]},
+  {id:'fridge',ic:'🧊',n:'租用冷链柜',d:'隔壁摊主出租冷链柜 ¥80：食材更新鲜，今晚售价 +15%。',opts:[
+    {t:'🧊 租下（-¥80，今晚售价 ×1.15）',need:80,fx:{money:-80,cmod:{price:1.15}}},
+    {t:'🙅 省一笔',fx:{}}]},
+  {id:'espresso',ic:'☕',n:'浓缩咖啡补给',d:'来一杯赛博浓缩 ¥50：今晚手速爆发，烹饪速度 +25%。',opts:[
+    {t:'☕ 干了（-¥50，今晚烹饪 ×1.25）',need:50,fx:{money:-50,cmod:{cook:1.25}}},
+    {t:'🙅 扛得住',fx:{}}]},
+];
+
 const TALENTS=[
   {id:'crit',  n:'暴击芯片', d:'15% 概率双倍收入（可叠加）',ic:'⚡'},
   {id:'tip',   n:'招财猫摆件',d:'小费 +25%（可叠加）',      ic:'🐱'},
@@ -599,6 +644,8 @@ const ACHS=[
   {id:'d30',    n:'月度元老',  d:'撑过第 30 天',         ic:'🏆', rew:{rep:30,money:500,tal:2,frag:3}},
   {id:'rich2',  n:'富甲一方',  d:'持有 ¥20000',          ic:'💎', rew:{rep:20,money:500,tal:1}},
   {id:'brands3',n:'夜市帝国',  d:'开出 3 家分店',        ic:'🏙️', rew:{rep:50,money:1000,tal:3,frag:10}},
+  {id:'spec10',n:'贵人云集',  d:'累计接待 10 位特殊顾客',ic:'🎭', rew:{rep:10,money:100}},
+  {id:'price1',n:'定价鬼才',  d:'把任意菜品定价到 150%', ic:'💲', rew:{money:50}},
 ];
 
 /* ================= 排行榜 ================= */
@@ -656,8 +703,9 @@ const DIFFS=[
 function diff(){return G&&G.difficulty?DIFFS.find(function(d){return d.id===G.difficulty})||DIFFS[1]:DIFFS[1]}
 function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]:diff();
   return{day:1,money:d.money,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},tp:0,
-  weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0},over:null,
-  lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id}}
+  weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0},over:null,
+  lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
+  priceMod:{},cmod:null,choice:null}}
 
 /* ================= 存档 ================= */
 function saveGame(){try{if(G&&!G.over){G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
@@ -698,7 +746,8 @@ function sanitizeSave(d){
     g.freeRd=!!d.freeRd;
     g.prestiges=clamp(Math.round(+d.prestiges||0),0,999);
     g.total={served:clamp(Math.round(+(d.total&&d.total.served)||0),0,1e9),
-             earned:clamp(Math.round(+(d.total&&d.total.earned)||0),0,1e12)};
+             earned:clamp(Math.round(+(d.total&&d.total.earned)||0),0,1e12),
+             spec:clamp(Math.round(+(d.total&&d.total.spec)||0),0,1e9)};
     g.lastTs=clamp(Math.round(+d.lastTs||Date.now()),0,Date.now());
     g.event=(d.event&&typeof d.event==='object'&&EVENTS.some(function(e){return e.id===d.event.id}))?{id:d.event.id,done:!!d.event.done}:null;
     var mst={};RECIPES.forEach(function(r){var v=Math.round(+((d.mastery||{})[r.id])||0);if(v>0)mst[r.id]=clamp(v,0,99999)});
@@ -708,6 +757,15 @@ function sanitizeSave(d){
       ?{k:String(d.quest.k||'q'),txt:String(d.quest.txt).slice(0,50),x:clamp(Math.round(+d.quest.x||0),0,1e9),rew:clamp(Math.round(+d.quest.rew||0),0,1e9),done:!!d.quest.done}
       :null;
     g.skin=SKINS.some(function(s){return s.id===d.skin})?d.skin:'default';
+    var pm2={};RECIPES.forEach(function(r){var v=+((d.priceMod||{})[r.id]);if(isFinite(v)&&v>0){v=clamp(Math.round(v*10)/10,.5,1.5);if(v!==1)pm2[r.id]=v}});
+    g.priceMod=pm2;
+    var cm2={};
+    if(d.cmod&&typeof d.cmod==='object'){
+      ['tip','flow','pat','price','cook','buyDisc'].forEach(function(k){var v=+d.cmod[k];if(isFinite(v)&&v>0)cm2[k]=clamp(v,.1,5)});
+      if(d.cmod.rep2)cm2.rep2=true;
+    }
+    g.cmod=Object.keys(cm2).length?cm2:null;
+    g.choice=(d.choice&&typeof d.choice==='object'&&CHOICES.some(function(c){return c.id===d.choice.id}))?{id:String(d.choice.id)}:null;
     g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
     g.tp=clamp(Math.round(+d.tp||0),0,999);
     g.difficulty=DIFFS.some(function(x){return x.id===d.difficulty})?d.difficulty:'norm';
@@ -1148,6 +1206,9 @@ const GUIDE_PAGES=[
     '<div class="grow2"><span class="gi">👆</span><div><b>接单</b>：点击排队顾客 → 开始做菜 → 做完自动收钱。雇了员工后他们<b>自动干活</b>，与你并行！</div></div>'+
     '<div class="grow2"><span class="gi">💢</span><div><b>耐心条</b>：顾客排队久了会不耐烦，耐心归零就气跑并<b>扣声望</b>。忙不过来时优先做耐心低的。</div></div>'+
     '<div class="grow2"><span class="gi">👥</span><div><b>顾客图鉴</b>：💼打工人·量大 / 🎓大学生·穷但好伺候 / 💻程序员·急性子 / 🤖机器人·气跑不扣声望 / 📸网红·土豪 / 🌧️网抑云人·甜品控</div></div>'+
+    '<div class="grow2"><span class="gi">🎭</span><div><b>特殊顾客</b>：🧐美食家·小费×5 / 📱主播·在场全场小费×2 / 🥺流浪者·施舍换声望 / 🥷摸兜客·<b style="color:var(--rd)">会偷钱，别接他的单！</b></div></div>'+
+    '<div class="grow2"><span class="gi">👆</span><div><b>主动操作</b>：点击烹饪中的菜<b>催单 +40%</b>；点顾客卡片右上角 ⬆ 让他<b>优先出餐</b>。</div></div>'+
+    '<div class="grow2"><span class="gi">💲</span><div><b>定价策略</b>：白天在「📋 菜单」给每道菜调价 ×0.5~×1.5。贵了客流少但小费多，便宜了薄利多销。</div></div>'+
     '<div class="gpage-tip">⌨️ 快捷键：空格 暂停 / S 极速 — 手忙脚乱时按空格冷静一下</div>'},
   {title:'✨ 生存法则',html:
     '<div class="grow2"><span class="gi">✨</span><div><b>天赋构筑</b>：每晚打烊三选一天赋，永久生效。叠加组合成流派——暴击流、小费流、自动流、涨客流…</div></div>'+
@@ -1272,6 +1333,43 @@ function rollQuest(){
   else{x=100+d*30;rew=tpl[2]+d*10}
   G.quest={k:tpl[0],txt:tpl[1].replace('{x}',x),x:x,rew:rew,done:false};
 }
+/* ================= 抉择事件 ================= */
+function rollChoice(){
+  G.cmod=null;G.choice=null;
+  if(G.day<2)return;
+  if(COACH&&COACH.on)return;
+  if(Math.random()>=.35)return;
+  var ch=choice(CHOICES);
+  G.choice={id:ch.id};
+  saveGame();
+  showChoice(ch);
+}
+function showChoice(ch){
+  showModal('<h3>'+ch.ic+' 抉择时刻 · '+ch.n+'</h3><div class="mtxt">'+ch.d+'</div>'+
+    '<div class="mops" style="flex-direction:column">'+ch.opts.map(function(o,i){
+      return '<div class="btn '+(i===0?'yl':'')+'" data-act="choiceGo" data-oi="'+i+'">'+o.t+'</div>'}).join('')+'</div>',false);
+}
+function choiceGo(oi){
+  var ch=G.choice?CHOICES.find(function(c){return c.id===G.choice.id}):null;
+  if(!ch){closeModal();return}
+  var o=ch.opts[oi|0]||ch.opts[0];
+  if(o.need&&G.money<o.need){toast('资金不足，选不了这项','rd');SFX.bad();return}
+  var fx=o.fx||{},msg=[];
+  if(fx.money){G.money=Math.max(0,G.money+fx.money);msg.push((fx.money>0?'+¥':'-¥')+fmt(Math.abs(fx.money)))}
+  if(fx.cmod){G.cmod=G.cmod||{};for(var k in fx.cmod)G.cmod[k]=fx.cmod[k]}
+  if(fx.risk&&Math.random()<fx.risk.p){G.rep=clamp(G.rep+(fx.risk.rep||0),0,100);msg.push('声望 '+(fx.risk.rep||0))}
+  if(fx.gamble){if(Math.random()<fx.gamble.p){G.money+=fx.gamble.win;msg.push('赌赢 +¥'+fmt(fx.gamble.win));SFX.bigcoin()}else{msg.push('赌输');SFX.bad()}}
+  if(fx.dish){
+    var locked=RECIPES.filter(function(r){return G.dishes.indexOf(r.id)<0});
+    if(locked.length){var r2=choice(locked);G.dishes.push(r2.id);msg.push('解锁「'+r2.n+'」');SFX.bigcoin();
+      if(G.dishes.length>=RECIPES.length)checkAch('dish17')}
+    else{G.money+=150;msg.push('配方已全掌握，退款 ¥150')}
+  }
+  closeModal();saveGame();renderDay();
+  toast(ch.ic+' '+(msg.length?msg.join(' · '):'好的，照常营业'),'gold');
+  SFX.click();
+}
+
 function checkQuest(){
   if(!G.quest||G.quest.done||!NIGHT)return;
   var q=G.quest,ok=false;
@@ -1342,12 +1440,12 @@ function panelBuy(){
   var lack=menuNeed();
   var h=lack.length?'<div class="lackTip">⚠️ 缺料预警：'+lack.map(ingN).join('、')+' —— 菜单里有菜做不了！</div>':'';
   var bulk=(G.talents.bulk||0)>0;
-  var evD=ev(),disc=(evD&&evD.buyDisc)||1;
+  var evD=ev(),CM=G.cmod||{},disc=((evD&&evD.buyDisc)||1)*(CM.buyDisc||1);
   h+='<div class="ing-grid">'+INGS.map(function(i){
     var price=Math.max(1,Math.round(i.c*(bulk?.8:1)*disc));
     var cur=G.ings[i.id]||0,cap=ingCap(),full=cur>=cap;
     return '<div class="ing-card"><b>'+i.ic+' '+i.n+'</b>'+
-      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦清仓-30%</span>':'')+'</div>'+
+      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦折扣中</span>':'')+'</div>'+
       '<div class="ops"><div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="1"'+(full?' disabled':'')+'>+1</div>'+
       '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10"'+(full?' disabled':'')+'>+10</div></div></div>'}).join('')+'</div>';
   h+='<div class="panel-tip">📦 仓库 Lv'+(G.ups.wh||0)+'：单种食材最多囤 '+ingCap()+' 份，去「🏗️ 设备」升级仓库扩容</div>';
@@ -1370,11 +1468,28 @@ function panelRd(){
 }
 function panelMenu(){
   if(!G.dishes.length)return '<div class="panel-tip">还没有菜品——先去「🔬 研发」捣鼓出第一道菜！</div>';
-  return G.dishes.map(function(id){
+  var ap=avgPriceMod();
+  var tier=ap>1.2?'<span style="color:var(--yl)">定价偏高：客流 -20% · 小费 +30%</span>'
+    :ap<.9?'<span style="color:var(--gr)">薄利多销：客流 +15% · 小费 -20%</span>':'定价适中，无额外影响';
+  var h=G.dishes.map(function(id){
     var r=recById(id),on=G.menu.indexOf(id)>=0;
-    return '<div class="dish-card"><div class="dn"><b>'+(CAT_IC[r.cat]||'')+' '+r.n+mastStar(id)+'</b><span>售价 ¥'+r.p+(mastLvl(id)?' · 熟练+'+(5*mastLvl(id))+'%':'')+'</span></div>'+
-      '<div class="btn sm '+(on?'rd':'gr')+'" data-act="menuTg" data-id="'+id+'">'+(on?'下架':'上架')+'</div></div>'}).join('')+
-    '<div class="panel-tip">顾客只点已上架的菜（最多 8 道）。高价菜赚得多，但要备足料！</div>';
+    var pm=(G.priceMod||{})[id]||1;
+    return '<div class="dish-card"><div class="dn"><b>'+(CAT_IC[r.cat]||'')+' '+r.n+mastStar(id)+'</b><span>售价 ¥'+dishPrice(r)+(mastLvl(id)?' · 熟练+'+(5*mastLvl(id))+'%':'')+'</span>'+
+      '<div class="pctl"><div class="btn sm" data-act="priceAdj" data-id="'+id+'" data-d="-0.1">−</div><span class="pv">×'+pm.toFixed(1)+'</span><div class="btn sm" data-act="priceAdj" data-id="'+id+'" data-d="0.1">＋</div></div></div>'+
+      '<div class="btn sm '+(on?'rd':'gr')+'" data-act="menuTg" data-id="'+id+'">'+(on?'下架':'上架')+'</div></div>'}).join('');
+  h+='<div class="panel-tip">💲 定价策略（按上架菜品平均倍率）：'+tier+'</div>';
+  h+='<div class="panel-tip">顾客只点已上架的菜（最多 8 道）。高价菜赚得多，但要备足料！</div>';
+  return h;
+}
+function priceAdj(rid,d){
+  var r=recById(rid);if(!r)return;
+  if(!G.priceMod)G.priceMod={};
+  var cur=G.priceMod[rid]||1;
+  var nv=clamp(Math.round((cur+d)*10)/10,.5,1.5);
+  if(nv===cur){toast('定价范围 ×0.5 ~ ×1.5','rd');return}
+  G.priceMod[rid]=nv;
+  if(nv>=1.5)checkAch('price1');
+  SFX.click();saveGame();renderDayPanel();
 }
 function panelDex(){
   var known=G.dishes;
@@ -1447,7 +1562,7 @@ function buyIng(fid,n){
   var cap=ingCap(),cur=G.ings[fid]||0;
   if(cur>=cap){toast('📦 仓库已满（上限 '+cap+'）——去「设备」升级仓库扩容','rd');SFX.bad();return}
   n=Math.min(n,cap-cur);
-  var E=ev(),disc=(E&&E.buyDisc)||1;
+  var E=ev(),CM=G.cmod||{},disc=((E&&E.buyDisc)||1)*(CM.buyDisc||1);
   var cost=Math.max(1,Math.round(ing.c*((G.talents.bulk||0)>0?.8:1)*disc))*n;
   if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
   G.money-=cost;G.ings[fid]=cur+n;
@@ -1547,7 +1662,7 @@ function doPrestigeGo(){
 }
 
 /* ================= 夜晚引擎 ================= */
-function cookSpeed(){var E=ev();return (1+.3*(G.ups.stove||0)+.35*(G.talents.auto||0))*(E?(E.cook||1):1)}
+function cookSpeed(){var E=ev(),CM=G.cmod||{};return (1+.3*(G.ups.stove||0)+.35*(G.talents.auto||0))*(E?(E.cook||1):1)*(CM.cook||1)}
 const LTD=[
   {id:'halloween',n:'万圣夜市',ic:'🎃',d:'万圣夜小费 +50%',tip:1.5,w:function(d){return d.getMonth()===9&&d.getDate()===31}},
   {id:'d11',n:'双十一大促',ic:'🛍️',d:'双十一客流 +30%',flow:1.3,w:function(d){return d.getMonth()===10&&d.getDate()===11}},
@@ -1558,8 +1673,10 @@ function ltd(d){d=d||new Date();return LTD.find(function(e){return e.w(d)})||nul
 function ltdEarn(){var L=ltd();return L?(L.earn||1):1}
 function ltdTip(){var L=ltd();return L?(L.tip||1):1}
 function ltdFlow(){var L=ltd();return L?(L.flow||1):1}
-function flowMult(){  var E=ev(),ef=E?(E.flow||1):1;
-  return (1+.2*(G.talents.flow||0))*(1+.15*(G.ups.stall||0))*(wx().flow||1)*ef*ltdFlow()*diff().flow;
+function flowMult(){  var E=ev(),ef=E?(E.flow||1):1,CM=G.cmod||{};
+  var f=(1+.2*(G.talents.flow||0))*(1+.15*(G.ups.stall||0))*(wx().flow||1)*ef*(CM.flow||1)*ltdFlow()*diff().flow;
+  var ap=avgPriceMod();if(ap>1.2)f*=.8;else if(ap<.9)f*=1.15;
+  return f;
 }
 function pickDish(cust){
   var ms=G.menu.map(recById).filter(Boolean);
@@ -1592,23 +1709,35 @@ function startNight(){
 function spawnGap(){return (3.6/flowMult())*(0.75+Math.random()*.5)}
 function spawnCust(){
   if(NIGHT.queue.length>=6)return;
-  var cust=choice(CUSTS);
+  var sp=null,cust=null;
+  var spN=NIGHT.queue.reduce(function(a,c){return a+(c.sp?1:0)},0);
+  if(spN<2&&Math.random()<.22){
+    var tw=0;SPECIALS.forEach(function(s){tw+=s.w});
+    var r=Math.random()*tw;
+    for(var i=0;i<SPECIALS.length;i++){r-=SPECIALS[i].w;if(r<=0){sp=SPECIALS[i];break}}
+    cust=sp;
+  }
+  if(!cust)cust=choice(CUSTS);
   var dish=pickDish(cust);if(!dish)return;
   NIGHT.cid++;
-  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(ev()?(ev().pat||1):1);
+  var CM=G.cmod||{};
+  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(ev()?(ev().pat||1):1)*(CM.pat||1);
   NIGHT.queue.push({cid:NIGHT.cid,type:cust.id,n:cust.n,e:cust.e,pay:cust.pay,tip:cust.tip,
-    noRep:!!cust.noRep,dish:dish.id,dishN:dish.n,price:dish.p,cat:dish.cat,pat:patMax,patMax:patMax});
+    noRep:!!cust.noRep,sp:sp?sp.id:null,spD:sp?sp.dsc:'',
+    dish:dish.id,dishN:dish.n,price:dishPrice(dish),cat:dish.cat,pat:patMax,patMax:patMax});
+  if(sp)toast(sp.e+' 特殊顾客「'+sp.n+'」光顾！'+sp.dsc,'cy');
   renderNight();
 }
 function loseCust(c){
   if(!NIGHT||!NIGHT.active)return;
   NIGHT.queue=NIGHT.queue.filter(function(x){return x.cid!==c.cid});
   var pen=2;
+  if(c.sp){var spd=spById(c.sp);if(spd&&spd.pen!==undefined)pen=spd.pen}
   if(c.noRep)pen=0;
   if((G.talents.shield||0)>0&&Math.random()<.5)pen=0;
   G.rep=Math.max(0,G.rep-pen);NIGHT.lostN++;
-  if(pen>0)toast(c.e+' '+c.n+' 气跑了！声望 -2','rd');
-  else toast(c.e+' '+c.n+' 气跑了（未扣声望）','rd');
+  if(pen>0)toast(c.e+' '+c.n+' 气跑了！声望 -'+pen,'rd');
+  else toast(c.e+' '+c.n+' 离开了（未扣声望）','rd');
   renderNight();renderTop();
   if(G.rep<=0)gameOver('rep');
 }
@@ -1624,21 +1753,46 @@ function cookFor(cid){
   }
   G.ings[rec.a]--;G.ings[rec.b]--;
   SFX.cook();
-  NIGHT.cooking.push({cid:cid,type:c.type,dish:c.dish,dishN:c.dish,price:c.price,cat:c.cat,prog:0,need:2.5});
+  NIGHT.cooking.push({cid:cid,type:c.type,sp:c.sp||null,dish:c.dish,dishN:c.dishN,price:c.price,cat:c.cat,prog:0,need:2.5});
   renderNight();
 }
 function mastLvl(id){var n=(G.mastery||{})[id]||0;return n>=70?3:n>=30?2:n>=10?1:0}
 function mastMult(id){return 1+.05*mastLvl(id)}
+function dishPrice(r){var m=(G.priceMod&&G.priceMod[r.id])||1;return Math.max(1,Math.round(r.p*m))}
+function avgPriceMod(){var ms=G?G.menu:[];if(!ms.length)return 1;var s=0;ms.forEach(function(id){s+=((G.priceMod||{})[id]||1)});return s/ms.length}
 function mastStar(id){var l=mastLvl(id);return l?'<span class="mst">'+'⭐'.repeat(l)+'</span>':''}
 function moodEmo(c){var r=c.pat/c.patMax;return r>.6?'😊':r>.3?'😐':'😠'}
 function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!==k});
   NIGHT.queue=NIGHT.queue.filter(function(c){return c.cid!==k.cid});
-  var cust=CUSTS.find(function(c){return c.id===k.type})||CUSTS[0];
-  var E=ev();
-  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*mastMult(k.dish)*staffPriceMult()*ltdEarn()*diff().price;
+  var cust=CUSTS.find(function(c){return c.id===k.type})||SPECIALS.find(function(c){return c.id===k.type})||CUSTS[0];
+  var E=ev(),CM=G.cmod||{};
+  if(k.sp&&G.total)G.total.spec=(G.total.spec||0)+1;
+  if(cust.free){
+    NIGHT.servedN++;NIGHT.sellN++;
+    G.mastery[k.dish]=(G.mastery[k.dish]||0)+1;
+    var rg=3*(1+.2*(G.ups.spk||0));if(E&&E.rep2)rg*=2;if(CM.rep2)rg*=2;
+    G.rep=Math.min(100,G.rep+rg);
+    toast('❤️ 施舍了 '+k.dishN+'，声望 +'+Math.round(rg),'gr');
+    SFX.quest();renderTop();checkQuest();renderNight();
+    if(G.total&&G.total.spec>=10)checkAch('spec10');
+    return;
+  }
+  if(cust.steal){
+    NIGHT.servedN++;
+    var stolen=G.money>0?Math.min(Math.round(G.money),30+((Math.random()*50)|0)):0;
+    if(stolen>0){G.money=Math.max(0,G.money-stolen);toast('🥷 摸兜客顺手牵羊 -¥'+fmt(stolen)+'！下次别接他的单','rd')}
+    else toast('🥷 摸兜客摸了个空（你身无分文）','rd');
+    SFX.bad();renderTop();renderNight();
+    if(G.total&&G.total.spec>=10)checkAch('spec10');
+    return;
+  }
+  var aura=(NIGHT.queue.some(function(c){return c.type==='streamer'})||NIGHT.cooking.some(function(k2){return k2.type==='streamer'}))?2:1;
+  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*(CM.price||1)*mastMult(k.dish)*staffPriceMult()*ltdEarn()*diff().price;
   var crit=Math.random()<Math.min(.45,.15*(G.talents.crit||0));
   if(crit)base*=2;
-  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*ltdTip();
+  var ap=avgPriceMod();
+  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura;
+  if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
   var gain=Math.round(base+tip);
   G.money+=gain;NIGHT.earn+=gain;
@@ -1646,12 +1800,15 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   G.mastery[k.dish]=(G.mastery[k.dish]||0)+1;
   var repGain=.4*(1+.2*(G.ups.spk||0));
   if(E&&E.rep2)repGain*=2;
+  if(CM.rep2)repGain*=2;
   G.rep=Math.min(100,G.rep+repGain);
+  if(cust.rep){G.rep=Math.min(100,G.rep+cust.rep);toast(cust.e+' 美食家竖起大拇指：声望 +'+cust.rep,'gr')}
   if(crit)toast('⚡ 暴击！双倍收入','gold');
   SFX.coin();renderTop();checkQuest();
   checkAch('first');
   var m=G.mastery[k.dish]||0;if(m>=10)checkAch('m1');if(m>=70)checkAch('m3');
   if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
+  if(G.total&&G.total.spec>=10)checkAch('spec10');
   renderNight();
 }
 function nightTick(){
@@ -1669,6 +1826,7 @@ function nightTick(){
       if(NIGHT.staffT<=0){
         NIGHT.staffT=3.2/(1+.35*(G.talents.auto||0))/Math.max(1,staffSpeedSum());
         var c=NIGHT.queue.find(function(c){
+          if(c.sp==='thief')return false;
           var r=recById(c.dish);return r&&(G.ings[r.a]||0)>0&&(G.ings[r.b]||0)>0});
         if(c)cookFor(c.cid);
       }
@@ -1684,12 +1842,14 @@ function renderNight(){
   $('#timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
   $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
   $('#cookList').innerHTML=NIGHT.cooking.map(function(k){
-    return '<div class="cook"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div></div>'}).join('');
+    return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:10px;color:var(--cy)">👆催</span></div>'}).join('');
   $('#custQueue').innerHTML=NIGHT.queue.map(function(c){
     var rec=recById(c.dish);
     var lack=!rec||(G.ings[rec.a]||0)<1||(G.ings[rec.b]||0)<1;
-    return '<div class="cust'+(lack?' noing':'')+'" data-cid="'+c.cid+'">'+
+    return '<div class="cust'+(lack?' noing':'')+(c.sp?' sp':'')+'" data-cid="'+c.cid+'">'+
+      '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆</div>'+
       '<div class="cAv">'+c.e+'</div><div class="cInfo"><b>'+c.n+' <span class="cMood">'+moodEmo(c)+'</span></b>'+
+      (c.sp?'<span class="spT">'+esc(c.spD||'')+'</span>':'')+
       '<span>'+esc(c.dishN)+' ¥'+c.price+'</span>'+
       '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div></div>'}).join('');
   $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
@@ -1717,6 +1877,19 @@ function updateNightTick(){
 }
 function togglePause(){if(!NIGHT||!NIGHT.active)return;NIGHT.paused=!NIGHT.paused;renderNight()}
 function toggleSpeed(){if(!NIGHT||!NIGHT.active)return;NIGHT.speed=NIGHT.speed===1?2.5:1;renderNight()}
+function rushCook(cid){
+  if(!NIGHT||!NIGHT.active||NIGHT.paused)return;
+  var k=NIGHT.cooking.find(function(x){return x.cid===cid});if(!k)return;
+  var now=Date.now();if(k._rush&&now-k._rush<300)return;
+  k._rush=now;k.prog=Math.min(k.need,k.prog+k.need*.4);
+  SFX.click();
+  if(k.prog>=k.need)serveOut(k);else renderNight();
+}
+function prioCust(cid){
+  if(!NIGHT||!NIGHT.active)return;
+  var i=NIGHT.queue.findIndex(function(c){return c.cid===cid});
+  if(i>0){var c=NIGHT.queue.splice(i,1)[0];NIGHT.queue.unshift(c);SFX.click();renderNight()}
+}
 document.addEventListener('keydown',function(e){
   if(!NIGHT||!NIGHT.active)return;
   if(e.code==='Space'){e.preventDefault();togglePause()}
@@ -1903,6 +2076,7 @@ function nextDay(){
   saveGame();
   renderDay();
   if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid),'rd');
+  rollChoice();
 }
 
 /* ================= 结局 ================= */
@@ -1930,8 +2104,13 @@ function gameOver(reason){
 /* ================= 全局点击分发 ================= */
 document.addEventListener('click',function(e){
   SFX.init();BGM.ensure();
+  var nightOn=!$('#scr-night').classList.contains('hidden');
+  var prioEl=e.target.closest('[data-act="prio"]');
+  if(prioEl&&nightOn){prioCust(+prioEl.dataset.cid);return}
+  var cookEl=e.target.closest('.cook[data-cook]');
+  if(cookEl&&nightOn){rushCook(+cookEl.dataset.cook);return}
   var custEl=e.target.closest('.cust[data-cid]');
-  if(custEl&&!$('#scr-night').classList.contains('hidden')){
+  if(custEl&&nightOn){
     cookFor(+custEl.dataset.cid);return;
   }
   var el=e.target.closest('[data-act]');
@@ -1965,6 +2144,8 @@ document.addEventListener('click',function(e){
     case 'rdPick':rdPick(id);break;
     case 'rdGo':rdGo();break;
     case 'menuTg':menuTg(id);break;
+    case 'priceAdj':priceAdj(id,parseFloat(el.dataset.d)||0);break;
+    case 'choiceGo':choiceGo(+(el.dataset.oi||0));break;
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
