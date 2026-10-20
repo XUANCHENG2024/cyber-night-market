@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.11.1 · 2026-10-21</div>
+    <div class="game-ver">内测版 v0.11.2 · 2026-10-21</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -633,19 +633,19 @@ const ACHS=[
   {id:'n1000',  n:'单晚破千',  d:'单晚营收 ¥1000',       ic:'💸', rew:{rep:20,money:200,tal:1}},
   {id:'s100',   n:'百客盈门',  d:'累计接待 100 位顾客',  ic:'🎫', rew:{rep:15,money:150}},
   {id:'dish17', n:'满汉全席',  d:'研发全部菜品',       ic:'📜', rew:{rep:30,money:500,tal:2}},
-  {id:'brand',  n:'连锁萌芽',  d:'开出第一家分店',       ic:'🏪', rew:{rep:25,money:300,frag:3}},
+  {id:'brand',  n:'连锁萌芽',  d:'开出第一家分店',       ic:'🏪', rew:{rep:25,money:450}},
   {id:'d7',     n:'一周生还',  d:'撑过第 7 天交租',      ic:'📅', rew:{rep:15,money:100}},
   {id:'rich',   n:'万贯家财',  d:'持有 ¥5000',           ic:'🏦', rew:{rep:10,money:200,tal:1}},
-  {id:'login7', n:'周常达人',  d:'连续登录 7 天',        ic:'🔥', rew:{rep:10,money:100,frag:5}},
+  {id:'login7', n:'周常达人',  d:'连续登录 7 天',        ic:'🔥', rew:{rep:10,money:350}},
   {id:'sk3',    n:'后厨大师',  d:'集齐 3 名带技能员工',  ic:'👨‍🍳', rew:{rep:15,money:200}},
-  {id:'skin5',  n:'审美在线',  d:'拥有 5 款皮肤',        ic:'🎨', rew:{rep:10,money:100,frag:5}},
+  {id:'skin5',  n:'审美在线',  d:'拥有 5 款皮肤',        ic:'🎨', rew:{rep:10,money:350}},
   {id:'share',  n:'社交达人',  d:'首次生成分享卡片',     ic:'📸', rew:{rep:5,money:50}},
   {id:'m1',     n:'初显身手',  d:'任一道菜熟练度 ⭐',    ic:'⭐', rew:{rep:5,money:30}},
   {id:'m3',     n:'手艺超群',  d:'任一道菜熟练度 ⭐⭐⭐',ic:'⭐⭐⭐', rew:{rep:20,money:200,tal:1}},
   {id:'ltd',    n:'节日之星',  d:'在限时活动日经营',     ic:'🎊', rew:{rep:10,money:100}},
-  {id:'d30',    n:'月度元老',  d:'撑过第 30 天',         ic:'🏆', rew:{rep:30,money:500,tal:2,frag:3}},
+  {id:'d30',    n:'月度元老',  d:'撑过第 30 天',         ic:'🏆', rew:{rep:30,money:650,tal:2}},
   {id:'rich2',  n:'富甲一方',  d:'持有 ¥20000',          ic:'💎', rew:{rep:20,money:500,tal:1}},
-  {id:'brands3',n:'夜市帝国',  d:'开出 3 家分店',        ic:'🏙️', rew:{rep:50,money:1000,tal:3,frag:10}},
+  {id:'brands3',n:'夜市帝国',  d:'开出 3 家分店',        ic:'🏙️', rew:{rep:50,money:1500,tal:3}},
   {id:'spec10',n:'贵人云集',  d:'累计接待 10 位特殊顾客',ic:'🎭', rew:{rep:10,money:100}},
   {id:'price1',n:'定价鬼才',  d:'把任意菜品定价到 150%', ic:'💲', rew:{money:50}},
 ];
@@ -1404,7 +1404,6 @@ function checkAch(id){
   if(R.rep){G.rep=Math.min(100,G.rep+R.rep);rtxt.push('声望 +'+R.rep)}
   if(R.money){G.money+=R.money;rtxt.push('¥'+fmt(R.money))}
   if(R.tal){G.tp=(G.tp||0)+R.tal;rtxt.push('天赋点 +'+R.tal)}
-  if(R.frag){/* frag 奖励待接入皮肤碎片系统 */rtxt.push('皮肤碎片 +'+R.frag)}
   if(rtxt.length){saveGame()}
   toast(a.ic+' 成就解锁：'+a.n+'！'+rtxt.join('  '),'gold');
   SFX.quest();
@@ -1513,7 +1512,7 @@ function panelDex(){
       '<div class="dex-p">'+(got?'¥'+dishPrice(r)+(mastLvl(r.id)?' ⭐'+mastLvl(r.id):''):'')+'</div></div>'}).join('')+'</div>';
   var unlocked=ACHS.filter(function(a){return ACH[a.id]}).length;
   h+='<div class="panel-tip" style="margin-top:18px">🏅 成就 · '+unlocked+' / '+ACHS.length+'</div>';
-  h+='<div class="ach-grid">'+ACHS.map(function(a){var gt=!!ACH[a.id];var R=a.rew||{},rt=[];if(R.rep)rt.push('声望+'+R.rep);if(R.money)rt.push('¥'+R.money);if(R.tal)rt.push('天赋点+'+R.tal);if(R.frag)rt.push('碎片+'+R.frag);return '<div class="ach-card'+(gt?' got':' locked')+'"><div class="ach-ic">'+(gt?a.ic:'🔒')+'</div><div class="ach-body"><div class="ach-n">'+a.n+(gt?' <span style="color:var(--cy);font-size:11px">（已领）</span>':'')+'</div><div class="ach-d">'+a.d+'</div>'+(rt.length?'<div class="ach-rew">🎁 '+rt.join(' · ')+'</div>':'')+'</div></div>'}).join('')+'</div>';
+  h+='<div class="ach-grid">'+ACHS.map(function(a){var gt=!!ACH[a.id];var R=a.rew||{},rt=[];if(R.rep)rt.push('声望+'+R.rep);if(R.money)rt.push('¥'+R.money);if(R.tal)rt.push('天赋点+'+R.tal);return '<div class="ach-card'+(gt?' got':' locked')+'"><div class="ach-ic">'+(gt?a.ic:'🔒')+'</div><div class="ach-body"><div class="ach-n">'+a.n+(gt?' <span style="color:var(--cy);font-size:11px">（已领）</span>':'')+'</div><div class="ach-d">'+a.d+'</div>'+(rt.length?'<div class="ach-rew">🎁 '+rt.join(' · ')+'</div>':'')+'</div></div>'}).join('')+'</div>';
   return h;
 }
 function panelStaff(){
