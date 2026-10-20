@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -295,7 +295,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.10.3 · 2026-10-21</div>
+    <div class="game-ver">内测版 v0.10.4 · 2026-10-21</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -700,7 +700,7 @@ function sanitizeSave(d){
     g.total={served:clamp(Math.round(+(d.total&&d.total.served)||0),0,1e9),
              earned:clamp(Math.round(+(d.total&&d.total.earned)||0),0,1e12)};
     g.lastTs=clamp(Math.round(+d.lastTs||Date.now()),0,Date.now());
-    g.event=(d.event&&typeof d.event==='object'&&EVENTS.some(function(e){return e.id===d.event.id}))?{id:d.event.id}:null;
+    g.event=(d.event&&typeof d.event==='object'&&EVENTS.some(function(e){return e.id===d.event.id}))?{id:d.event.id,done:!!d.event.done}:null;
     var mst={};RECIPES.forEach(function(r){var v=Math.round(+((d.mastery||{})[r.id])||0);if(v>0)mst[r.id]=clamp(v,0,99999)});
     g.mastery=mst;
     g.loginDates=(Array.isArray(d.loginDates)?d.loginDates:[]).filter(function(s){return typeof s==='string'&&/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)}).slice(-60);
@@ -844,6 +844,13 @@ const SYNC={
     var t=0;try{t=+localStorage.getItem('cyberNightMarket_bkT')||0}catch(e){}
     var st=this.dead?'不可用（仅本地存储）':'已开启（IndexedDB 冗余备份）';
     return '<div class="syncStat">💾 自动备份：'+st+'<br>🕐 上次备份：'+this.relTime(t)+'</div>';
+  },
+  clearMirror(){
+    try{localStorage.removeItem('cyberNightMarket_bkT')}catch(e){}
+    var self=this;
+    function wipe(db){if(!db)return;try{var st=db.transaction('kv','readwrite').objectStore('kv');st.delete('save');st.delete('life')}catch(e){}}
+    if(this.db)wipe(this.db);
+    else this.open().then(function(db){if(db){self.db=db;wipe(db)}});
   },
   mergeLife(parsedLife){
     if(!parsedLife)return;
@@ -1168,7 +1175,8 @@ function newGame(){
   G=freshG();rollWeather();rollEvent();rollQuest();
   saveGame();
   SFX.click();
-  showGuide('new');
+  if(coachSeen())startFirst(); // 老玩家跳过图文引导直接开局
+  else showGuide('new');
 }
 function chooseDiff(){
   var h='<div class="diff-wrap">'+DIFFS.map(function(d,i){
@@ -1241,6 +1249,7 @@ function askReset(){
 }
 function resetGo(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LIFE_KEY)}catch(e){}
+  SYNC.clearMirror();
   G=null;LIFE={served:0,earned:0,brands:0,bestDay:0};ACH={};
   closeModal();refreshMenuContinue();renderMenuLife();
   toast('🗑️ 存档已清除','rd');
@@ -1298,6 +1307,7 @@ const TABS=[['buy','🛒 进货'],['rd','🔬 研发'],['menu','📋 菜单'],['
 function renderDay(){
   applySkin();
   showScreen('scr-day');
+  window._pm=undefined; // 进入白天重置金额动画基线，避免跨档误播闪烁
   var W=wx();
   var evb=$('#eventBanner'),E=ev();
   if(E){evb.classList.remove('hidden');evb.innerHTML=E.ic+' <b>'+E.n+'</b> —— '+E.d}
@@ -1332,11 +1342,12 @@ function panelBuy(){
   var lack=menuNeed();
   var h=lack.length?'<div class="lackTip">⚠️ 缺料预警：'+lack.map(ingN).join('、')+' —— 菜单里有菜做不了！</div>':'';
   var bulk=(G.talents.bulk||0)>0;
+  var evD=ev(),disc=(evD&&evD.buyDisc)||1;
   h+='<div class="ing-grid">'+INGS.map(function(i){
-    var price=Math.max(1,Math.round(i.c*(bulk?.8:1)));
+    var price=Math.max(1,Math.round(i.c*(bulk?.8:1)*disc));
     var cur=G.ings[i.id]||0,cap=ingCap(),full=cur>=cap;
     return '<div class="ing-card"><b>'+i.ic+' '+i.n+'</b>'+
-      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+'</div>'+
+      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦清仓-30%</span>':'')+'</div>'+
       '<div class="ops"><div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="1"'+(full?' disabled':'')+'>+1</div>'+
       '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10"'+(full?' disabled':'')+'>+10</div></div></div>'}).join('')+'</div>';
   h+='<div class="panel-tip">📦 仓库 Lv'+(G.ups.wh||0)+'：单种食材最多囤 '+ingCap()+' 份，去「🏗️ 设备」升级仓库扩容</div>';
@@ -1468,7 +1479,6 @@ function rdGo(){
         '<p style="text-align:center">'+(CAT_IC[hit.cat]||'')+' · 售价 ¥'+hit.p+'</p>'+
         '<p style="text-align:center;color:var(--dim);font-size:12px">记得去「📋 菜单」上架才会有人点！</p></div>'+
         '<div class="mops"><div class="btn mg" data-act="closeModal">太好了</div></div>');
-      if(G.dishes.length>=RECIPES.length)checkAch('dish17');
     }
   }else{
     toast('🧪 黑暗料理！试吃员当场宕机','rd');SFX.bad();
@@ -1566,8 +1576,11 @@ function startNight(){
   var E=ev();
   if(E){
     toast(E.ic+' '+E.n+'！'+E.d,'gold');
-    if(E.rep){G.rep=clamp(G.rep+E.rep,0,100);setTimeout(function(){toast('📟 声望 '+(E.rep>0?'+':'')+E.rep,E.rep>0?'gr':'rd');renderTop()},600)}
-    if(E.money){G.money=Math.max(0,G.money+E.money);setTimeout(function(){toast((E.money>0?'💰 获得 ¥':'💸 支出 ¥')+fmt(Math.abs(E.money)),E.money>0?'gr':'rd');renderTop()},600)}
+    if(!G.event.done&&(E.rep||E.money)){
+      if(E.rep){G.rep=clamp(G.rep+E.rep,0,100);setTimeout(function(){toast('📟 声望 '+(E.rep>0?'+':'')+E.rep,E.rep>0?'gr':'rd');renderTop()},600)}
+      if(E.money){G.money=Math.max(0,G.money+E.money);setTimeout(function(){toast((E.money>0?'💰 获得 ¥':'💸 支出 ¥')+fmt(Math.abs(E.money)),E.money>0?'gr':'rd');renderTop()},600)}
+      G.event.done=1;
+    }
   }
   NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null};
@@ -1588,6 +1601,7 @@ function spawnCust(){
   renderNight();
 }
 function loseCust(c){
+  if(!NIGHT||!NIGHT.active)return;
   NIGHT.queue=NIGHT.queue.filter(function(x){return x.cid!==c.cid});
   var pen=2;
   if(c.noRep)pen=0;
@@ -1638,8 +1652,6 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   checkAch('first');
   var m=G.mastery[k.dish]||0;if(m>=10)checkAch('m1');if(m>=70)checkAch('m3');
   if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
-  checkAch('first');
-  if(G.money>=5000)checkAch('rich');
   renderNight();
 }
 function nightTick(){
@@ -1860,9 +1872,15 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
 function offerTalents(){
   var pool=TALENTS.slice(),opts=[];
   while(opts.length<3&&pool.length)opts.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
-  showModal('<h3>✨ 天赋觉醒 · 三选一</h3><div class="mtxt">'+
+  showModal('<h3>✨ 天赋觉醒 · 三选一</h3>'+
+    ((G.tp||0)>0?'<div class="mtxt" style="margin-bottom:8px">🎟️ 天赋点 ×'+G.tp+' <span class="btn sm" data-act="rerollTal" style="margin-left:8px">🔄 换一批（-1 点）</span></div>':'')+
+    '<div class="mtxt">'+
     opts.map(function(t){return '<div class="tal" data-act="pickTalent" data-id="'+t.id+'">'+
       '<span class="ti">'+t.ic+'</span><div><b>'+t.n+'</b><span>'+t.d+'</span></div></div>'}).join('')+'</div>');
+}
+function rerollTalents(){
+  if((G.tp||0)<=0){toast('没有天赋点，去成就里赢取吧','rd');return}
+  G.tp--;SFX.click();saveGame();offerTalents();
 }
 function pickTalent(id){
   var t=TALENTS.find(function(x){return x.id===id});if(!t)return;
@@ -1891,9 +1909,11 @@ function nextDay(){
 function gameOver(reason){
   if(NIGHT&&NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
   if(NIGHT)NIGHT.active=false;
+  if(G)G.over=reason||'over';
   SFX.gameover();
   saveLife();
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}
+  SYNC.clearMirror();
   var reasonTxt=reason==='rent'
     ?'🧾 交不起房租，摊位被房东机械臂整个搬走了……'
     :'📉 声望崩盘，再也没有客人愿意来你的摊……';
@@ -1948,7 +1968,7 @@ document.addEventListener('click',function(e){
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
-    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();closeModal();renderDay();checkLogin();break;
+    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();saveGame();closeModal();renderDay();checkLogin();break;
     case 'startGo':chooseDiff();break;
     case 'shareCard':shareCard();break;
     case 'saveCard':saveCard();break;
@@ -1961,6 +1981,7 @@ document.addEventListener('click',function(e){
     case 'nspeed':toggleSpeed();break;
     case 'talents':SFX.click();offerTalents();break;
     case 'pickTalent':pickTalent(id);break;
+    case 'rerollTal':rerollTalents();break;
     case 'career':showCareer();break;
     case 'settings':showSettings();break;
     case 'coachNext':coachNext();break;
