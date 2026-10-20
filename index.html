@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.11.2 · 2026-10-21</div>
+    <div class="game-ver">内测版 v0.11.3 · 2026-10-21</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -1862,7 +1862,7 @@ function renderNight(){
       '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆</div>'+
       '<div class="cAv">'+c.e+'</div><div class="cInfo"><b>'+c.n+' <span class="cMood">'+moodEmo(c)+'</span></b>'+
       (c.sp?'<span class="spT">'+esc(c.spD||'')+'</span>':'')+
-      '<span>'+esc(c.dishN)+' ¥'+c.price+'</span>'+
+      '<span>'+esc(c.dishN)+' '+(c.sp==='beggar'?'❤️ 施舍':'¥'+c.price)+'</span>'+
       '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div></div>'}).join('');
   $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
   var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
