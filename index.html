@@ -226,6 +226,30 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 .tal b{display:block;font-size:14px}
 .tal span{font-size:11px;color:var(--dim)}
 
+/* ---------- 生涯数据 ---------- */
+.career-grid{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:4px 12px}
+.career-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:12px;
+ border-bottom:1px dashed rgba(255,255,255,.07)}
+.career-row:last-child{border-bottom:0}
+.career-row span{color:var(--dim)}
+.career-row b{color:#fff;text-align:right}
+
+/* ---------- 设置 ---------- */
+.set-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px}
+.set-slider{padding:8px 0;font-size:12px}
+.set-slider label{display:flex;justify-content:space-between;color:var(--dim);margin-bottom:6px}
+.set-slider b{color:var(--cy)}
+.set-slider input[type=range]{width:100%;accent-color:var(--cy);height:22px}
+
+/* ---------- 新手引导气泡 ---------- */
+.coach-hole{position:fixed;border-radius:10px;pointer-events:none;z-index:1200;
+ box-shadow:0 0 0 9999px rgba(4,4,12,.72),0 0 0 2px var(--cy);
+ transition:left .25s ease,top .25s ease,width .25s ease,height .25s ease}
+.coach-pop{position:fixed;z-index:1201;background:rgba(13,13,31,.98);border:1px solid var(--cy);
+ border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.7;box-shadow:0 10px 34px rgba(0,0,0,.6)}
+.coach-pop .cn{color:var(--cy);font-size:11px;margin-bottom:5px;letter-spacing:.5px}
+.coach-pop .cops{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+
 /* ---------- 同步中心 ---------- */
 .syncStat{background:var(--pan2);border:1px solid var(--line);border-radius:8px;
  padding:8px 10px;font-size:12px;color:var(--cy);margin-bottom:10px;line-height:1.8}
@@ -271,11 +295,13 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.10.1 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.10.2 · 2026-10-20</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
       <div class="btn" data-act="guide">📖 玩法说明</div>
+      <div class="btn" data-act="career">📊 生涯数据</div>
+      <div class="btn" data-act="settings">⚙️ 音效设置</div>
       <div class="btn" data-act="syncCenter">🔄 数据同步</div>
       <div class="btn rd" data-act="askReset">🗑️ 清除存档</div>
     </div>
@@ -344,16 +370,16 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function choice(arr){return arr[(Math.random()*arr.length)|0]}
 
 /* ================= 音效引擎 ================= */
-const SOUND={on:true};
+const SOUND={on:true,vol:(function(){try{var v=localStorage.getItem('cyberNightMarket_sfxvol');if(v===null)return 1;return clamp((+v)/100||0,0,1)}catch(e){return 1}})()};
 const SFX={ctx:null,
   init(){if(this.ctx)return;try{var AC=window.AudioContext||window.webkitAudioContext;if(AC)this.ctx=new AC()}catch(e){}},
   beep(f,d,type,v,slide){
-    if(!this.ctx||!SOUND.on)return;
+    if(!this.ctx||!SOUND.on||SOUND.vol<=0)return;
     try{
       var t=this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();
       o.type=type||'sine';o.frequency.setValueAtTime(f,t);
       if(slide)o.frequency.linearRampToValueAtTime(slide,t+d);
-      g.gain.setValueAtTime(v||.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+      var vol=(v||.05)*SOUND.vol;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
       o.connect(g);g.connect(this.ctx.destination);o.start(t);o.stop(t+d+.02);
     }catch(e){}
   },
@@ -374,6 +400,7 @@ const SFX={ctx:null,
 /* ================= BGM 引擎（Am-F-C-G · 88BPM 程序化合成） ================= */
 const BGM={
   on:(function(){try{return localStorage.getItem('cyberNightMarket_bgm')!=='0'}catch(e){return true}})(),
+  vol:(function(){try{var v=localStorage.getItem('cyberNightMarket_bgmvol');if(v===null)return 1;return clamp((+v)/100||0,0,1)}catch(e){return 1}})(),
   playing:false,t0:0,step:0,timer:null,_out:null,
   ensure(){
     if(!this.on||this.playing||!SFX.ctx)return;
@@ -393,7 +420,7 @@ const BGM={
     if(this.on)this.ensure();else this.stop();
     return this.on;
   },
-  mkOut(){var g=SFX.ctx.createGain();g.gain.value=.55;g.connect(SFX.ctx.destination);return g},
+  mkOut(){var g=SFX.ctx.createGain();g.gain.value=.55*this.vol;g.connect(SFX.ctx.destination);return g},
   note(t,f,d,type,v){
     if(!SFX.ctx)return;
     try{
@@ -445,6 +472,8 @@ const INGS=[
   {id:'fruit',n:'基因水果',c:7,cat:'dr',ic:'🍓'},
   {id:'ice',n:'纯净水冰',c:2,cat:'dr',ic:'🧊'},
   {id:'tea',n:'茶砖浓缩液',c:5,cat:'dr',ic:'🍵'},
+  {id:'egg',n:'合成蛋液',c:5,cat:'st',ic:'🥚'},
+  {id:'berry',n:'霓虹浆果',c:7,cat:'sw',ic:'🫐'},
 ];
 function ingN(id){var i=INGS.find(function(x){return x.id===id});return i?i.n:id}
 
@@ -466,6 +495,18 @@ const RECIPES=[
   {id:'r14',a:'tea',  b:'ice',  n:'赛博冰茶',   p:11,cat:'dr'},
   {id:'r15',a:'tea',  b:'fruit',n:'全息水果茶', p:16,cat:'dr'},
   {id:'r16',a:'tea',  b:'sugar',n:'珍珠神经奶茶',p:18,cat:'dr'},
+  {id:'r17',a:'egg',  b:'flour',n:'金黄蛋香煎饼',p:14,cat:'st'},
+  {id:'r18',a:'egg',  b:'rice', n:'元气蛋炒饭', p:17,cat:'st'},
+  {id:'r19',a:'egg',  b:'meat', n:'双蛋白能量堡',p:24,cat:'st'},
+  {id:'r20',a:'egg',  b:'veg',  n:'翡翠蛋卷',   p:15,cat:'st'},
+  {id:'r21',a:'egg',  b:'sugar',n:'焦糖布丁塔', p:15,cat:'sw'},
+  {id:'r22',a:'egg',  b:'tea',  n:'茶香蒸蛋',   p:16,cat:'dr'},
+  {id:'r23',a:'egg',  b:'ice',  n:'冰镇溏心蛋', p:13,cat:'st'},
+  {id:'r24',a:'egg',  b:'fruit',n:'果香舒芙蕾', p:18,cat:'sw'},
+  {id:'r25',a:'berry',b:'fruit',n:'双莓神经塔', p:17,cat:'sw'},
+  {id:'r26',a:'berry',b:'sugar',n:'浆果爆珠慕斯',p:19,cat:'sw'},
+  {id:'r27',a:'berry',b:'ice',  n:'莓莓冷萃冰', p:14,cat:'dr'},
+  {id:'r28',a:'berry',b:'tea',  n:'莓果神经茶', p:18,cat:'dr'},
 ];
 RECIPES.forEach(function(r){r.key=[r.a,r.b].sort().join('+')});
 function recById(id){return RECIPES.find(function(r){return r.id===id})}
@@ -533,7 +574,7 @@ const ACHS=[
   {id:'n500',   n:'小有名气',  d:'单晚营收 ¥500',        ic:'🌙', rew:{rep:10,money:100}},
   {id:'n1000',  n:'单晚破千',  d:'单晚营收 ¥1000',       ic:'💸', rew:{rep:20,money:200,tal:1}},
   {id:'s100',   n:'百客盈门',  d:'累计接待 100 位顾客',  ic:'🎫', rew:{rep:15,money:150}},
-  {id:'dish17', n:'满汉全席',  d:'研发全部 17 道菜',     ic:'📜', rew:{rep:30,money:500,tal:2}},
+  {id:'dish17', n:'满汉全席',  d:'研发全部菜品',       ic:'📜', rew:{rep:30,money:500,tal:2}},
   {id:'brand',  n:'连锁萌芽',  d:'开出第一家分店',       ic:'🏪', rew:{rep:25,money:300,frag:3}},
   {id:'d7',     n:'一周生还',  d:'撑过第 7 天交租',      ic:'📅', rew:{rep:15,money:100}},
   {id:'rich',   n:'万贯家财',  d:'持有 ¥5000',           ic:'🏦', rew:{rep:10,money:200,tal:1}},
@@ -909,12 +950,14 @@ function showScreen(id){
   SCRS.forEach(function(s){var el=$('#'+s);if(el)el.classList.toggle('hidden',s!==id)});
   $('#topbar').classList.toggle('hidden',id==='scr-menu');
 }
+let SETTINGS_OPEN=false;
 function showModal(html,canDismiss){
+  SETTINGS_OPEN=false;
   $('#modalCard').innerHTML=html;
   $('#modalBox').classList.remove('hidden');
   $('#modalBox').dataset.canDismiss=canDismiss?'1':'';
 }
-function closeModal(){$('#modalBox').classList.add('hidden')}
+function closeModal(){SETTINGS_OPEN=false;$('#modalBox').classList.add('hidden')}
 $('#modalBox').addEventListener('click',function(e){
   if(e.target===this&&this.dataset.canDismiss==='1')closeModal();
 });
@@ -924,6 +967,116 @@ function toast(msg,color){
   $('#toasts').appendChild(t);
   setTimeout(function(){t.classList.add('out');setTimeout(function(){t.remove()},320)},2200);
 }
+
+/* ================= 生涯数据面板 ================= */
+function showCareer(){
+  var rows=[
+    ['🏆 累计接待顾客', fmt(LIFE.served)+' 位'],
+    ['💰 生涯累计营收', '¥'+fmt(LIFE.earned)],
+    ['🌙 单晚最佳营收', '¥'+fmt(LIFE.bestDay)],
+    ['🏪 连锁分店', LIFE.brands+' 家'],
+    ['🏅 成就解锁', ACHS.filter(function(a){return ACH[a.id]}).length+' / '+ACHS.length],
+  ];
+  if(G){
+    var mstK=null;
+    Object.keys(G.mastery||{}).forEach(function(k){if(!mstK||(G.mastery[k]||0)>(G.mastery[mstK]||0))mstK=k});
+    var mstRec=mstK?recById(mstK):null;
+    rows=rows.concat([
+      ['📅 本局天数', '第 '+G.day+' 天'],
+      ['🎚️ 当前难度', diff().n],
+      ['💴 当前资金', '¥'+fmt(G.money)],
+      ['📟 当前声望', String(Math.round(G.rep))],
+      ['🍜 已解锁菜品', G.dishes.length+' / '+RECIPES.length],
+      ['👨‍🍳 后厨员工', G.staff.length+' / 3'],
+      ['⭐ 熟练度最高', mstRec?(mstRec.n+'（'+(G.mastery[mstK]||0)+' 次）'):'暂无'],
+    ]);
+  }
+  var lb=getLB();
+  rows.push(['🏆 本周排名', '第 '+(lb.rank+1)+' 名 · ¥'+fmt(lb.players[lb.rank].earn)]);
+  var h='<div class="career-grid">'+rows.map(function(r){
+    return '<div class="career-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>'}).join('')+'</div>'+
+    '<div class="panel-tip" style="margin-top:12px">你的专属夜市生涯档案 · 本地存储，不上传任何数据</div>';
+  showModal('<h3>📊 生涯数据</h3>'+h+'<div class="mops"><div class="btn mg" data-act="closeModal">关闭</div></div>',true);
+}
+
+/* ================= 音效设置面板 ================= */
+function setBgmVol(v){
+  BGM.vol=clamp((+v||0)/100,0,1);BGM._out=null;
+  try{localStorage.setItem('cyberNightMarket_bgmvol',String(Math.round(BGM.vol*100)))}catch(e){}
+  var l=document.getElementById('bgmVolLbl');if(l)l.textContent=Math.round(BGM.vol*100)+'%';
+  if(BGM.on&&BGM.vol>0)BGM.ensure();
+}
+function setSfxVol(v){
+  SOUND.vol=clamp((+v||0)/100,0,1);
+  try{localStorage.setItem('cyberNightMarket_sfxvol',String(Math.round(SOUND.vol*100)))}catch(e){}
+  var l=document.getElementById('sfxVolLbl');if(l)l.textContent=Math.round(SOUND.vol*100)+'%';
+  SFX.click();
+}
+function showSettings(){
+  showModal('<h3>⚙️ 音效设置</h3>'+
+    '<div class="set-row"><span>🎵 背景音乐</span><div class="btn sm '+(BGM.on?'gr':'')+'" data-act="bgm">'+(BGM.on?'已开启':'已关闭')+'</div></div>'+
+    '<div class="set-row"><span>🔊 游戏音效</span><div class="btn sm '+(SOUND.on?'gr':'')+'" data-act="sound">'+(SOUND.on?'已开启':'已关闭')+'</div></div>'+
+    '<div class="set-slider"><label>🎵 音乐音量<b id="bgmVolLbl">'+Math.round(BGM.vol*100)+'%</b></label>'+
+      '<input type="range" min="0" max="100" value="'+Math.round(BGM.vol*100)+'" oninput="setBgmVol(this.value)"></div>'+
+    '<div class="set-slider"><label>🔊 音效音量<b id="sfxVolLbl">'+Math.round(SOUND.vol*100)+'%</b></label>'+
+      '<input type="range" min="0" max="100" value="'+Math.round(SOUND.vol*100)+'" oninput="setSfxVol(this.value)"></div>'+
+    '<div class="panel-tip" style="margin-top:10px">全部音乐与音效均由 Web Audio 程序化合成，无需外部音频文件，可放心调低或关闭。</div>'+
+    '<div class="mops"><div class="btn mg" data-act="closeModal">完成</div></div>',true);
+  SETTINGS_OPEN=true;
+}
+
+/* ================= 动态新手引导（分步高亮气泡） ================= */
+const COACH_STEPS=[
+  {sel:'#tabs',text:'这是白天经营面板：进货、研发、菜单、图鉴、后厨、设备。跟着我走一遍核心流程 👇'},
+  {sel:'[data-act="tab"][data-id="buy"]',text:'① <b>进货</b>：买食材。没食材做不了菜，看天气囤货——雨天主食好卖，热浪天饮品抢手。'},
+  {sel:'[data-act="tab"][data-id="rd"]',text:'② <b>研发</b>：点选两种食材碰撞新配方。首次研发全免费，失败也不花钱，大胆试！'},
+  {sel:'[data-act="tab"][data-id="menu"]',text:'③ <b>菜单</b>：研发出的菜要在这里「上架」，顾客才会点单（最多 8 道）。'},
+  {sel:'[data-act="startNight"]',text:'④ <b>开摊营业</b>：点击排队顾客接单做菜，做完自动收钱。祝你今晚大卖！'},
+];
+let COACH={i:0,on:false};
+function coachSeen(){try{return localStorage.getItem('cyberNightMarket_coach')==='1'}catch(e){return false}}
+function markCoach(){try{localStorage.setItem('cyberNightMarket_coach','1')}catch(e){}}
+function startCoach(){COACH.i=0;COACH.on=true;renderCoach()}
+function endCoach(){COACH.on=false;markCoach();var b=document.getElementById('coachBox');if(b)b.remove()}
+function coachNext(){COACH.i++;SFX.click();renderCoach()}
+function coachSkip(){SFX.click();endCoach()}
+function renderCoach(){
+  if(!COACH.on)return;
+  var b=document.getElementById('coachBox');
+  if(!b){b=document.createElement('div');b.id='coachBox';document.body.appendChild(b)}
+  while(COACH.i<COACH_STEPS.length){
+    var t=document.querySelector(COACH_STEPS[COACH.i].sel);
+    if(t&&(t.offsetParent!==null||t.getClientRects().length>0))break;
+    COACH.i++;
+  }
+  if(COACH.i>=COACH_STEPS.length){endCoach();return}
+  var st=COACH_STEPS[COACH.i];
+  b.innerHTML='<div class="coach-hole" id="coachHole"></div><div class="coach-pop" id="coachPop">'+
+    '<div class="cn">新手引导 · '+(COACH.i+1)+'/'+COACH_STEPS.length+'</div>'+
+    '<div>'+st.text+'</div>'+
+    '<div class="cops"><div class="btn sm" data-act="coachSkip">跳过</div>'+
+    '<div class="btn sm mg" data-act="coachNext">'+(COACH.i===COACH_STEPS.length-1?'开始营业 ✓':'下一步 →')+'</div></div></div>';
+  var tg=document.querySelector(st.sel);
+  if(tg){try{tg.scrollIntoView({block:'center'})}catch(e){}}
+  coachPos();
+}
+function coachPos(){
+  if(!COACH.on)return;
+  var s=COACH_STEPS[COACH.i];if(!s)return;
+  var t=document.querySelector(s.sel);
+  var h=document.getElementById('coachHole'),p=document.getElementById('coachPop');
+  if(!t||!h||!p)return;
+  var r=t.getBoundingClientRect(),pad=6,pw=Math.min(280,window.innerWidth-24);
+  h.style.left=Math.max(0,r.left-pad)+'px';h.style.top=Math.max(0,r.top-pad)+'px';
+  h.style.width=Math.min(window.innerWidth,r.width+pad*2)+'px';h.style.height=(r.height+pad*2)+'px';
+  p.style.width=pw+'px';
+  p.style.left=clamp(r.left,12,Math.max(12,window.innerWidth-pw-12))+'px';
+  var top=r.bottom+14;
+  if(top+150>window.innerHeight)top=Math.max(12,r.top-160);
+  p.style.top=top+'px';
+}
+window.addEventListener('resize',function(){if(COACH.on)coachPos()});
+window.addEventListener('scroll',function(){if(COACH.on)coachPos()},true);
 
 /* ================= 顶栏 ================= */
 function renderTop(){
@@ -968,7 +1121,7 @@ const GUIDE_PAGES=[
     '<p style="text-align:center">大厂第 996 天，你把工牌拍在桌上，在赛博夜市租下一个角落。<br>初始资金 <b style="color:var(--yl)">¥300</b>。活下去，做大它。</p>'},
   {title:'🛒 白天 · 经营决策',html:
     '<div class="grow2"><span class="gi">🛒</span><div><b>进货</b>：没食材做不了菜。看天气囤货——雨天主食好卖，热浪天饮品抢手。</div></div>'+
-    '<div class="grow2"><span class="gi">🔬</span><div><b>研发</b>：两种食材碰撞新配方，28 种组合里有 17 道真菜。<b style="color:var(--yl)">首次研发全免费！</b></div></div>'+
+    '<div class="grow2"><span class="gi">🔬</span><div><b>研发</b>：两种食材碰撞新配方，'+(INGS.length*(INGS.length-1)/2)+' 种组合里有 '+RECIPES.length+' 道真菜。<b style="color:var(--yl)">首次研发全免费！</b></div></div>'+
     '<div class="grow2"><span class="gi">📋</span><div><b>菜单</b>：研发出新菜后上架，顾客只会点菜单里的东西。只放高价菜=只赚大钱。</div></div>'+
     '<div class="grow2"><span class="gi">👨‍🍳</span><div><b>后厨 + 设备</b>：雇员工自动干活（上限 3 人），升级摊位和设备滚雪球。</div></div>'+
     '<div class="grow2"><span class="gi">🎯</span><div><b>悬赏</b>：每天随机小目标，完成拿奖金 + 声望，短中长期都有奔头。</div></div>'+
@@ -1021,6 +1174,7 @@ function startFirst(){
   checkLogin();
   renderDay();
   toast('🛒 先去进货，再研发一道招牌菜吧','cy');
+  if(!coachSeen())setTimeout(startCoach,80);
 }
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
 function loginStreak(){
@@ -1189,7 +1343,7 @@ function panelRd(){
   if(known.length){
     h+='<div class="panel-tip">已掌握：'+known.map(function(r){return r.n}).join('、')+'</div>';
   }
-  h+='<div class="panel-tip">28 种两两组合中藏着 17 道真菜，其余是黑暗料理…</div>';
+  h+='<div class="panel-tip">'+(INGS.length*(INGS.length-1)/2)+' 种两两组合中藏着 '+RECIPES.length+' 道真菜，其余是黑暗料理…</div>';
   return h;
 }
 function panelMenu(){
@@ -1295,7 +1449,7 @@ function rdGo(){
     }else{
       G.dishes.push(hit.id);
       SFX.bigcoin();
-      if(G.dishes.length>=17)checkAch('dish17');
+      if(G.dishes.length>=RECIPES.length)checkAch('dish17');
 
       showModal('<h3>🧪 研发成功！</h3><div class="mtxt"><p style="text-align:center;font-size:30px;margin:10px 0">🍜</p>'+
         '<p style="text-align:center"><b style="font-size:16px;color:var(--yl)">'+hit.n+'</b></p>'+
@@ -1702,11 +1856,11 @@ document.addEventListener('click',function(e){
     case 'bgm':
       if(BGM.toggle())toast('🎵 背景音乐已开启','gold');
       else toast('🎵 背景音乐已关闭');
-      renderTop();break;
+      renderTop();if(SETTINGS_OPEN)showSettings();break;
     case 'sound':
       SOUND.on=!SOUND.on;SFX.click();
       if(SOUND.on)SFX.coin();
-      renderTop();break;
+      renderTop();if(SETTINGS_OPEN)showSettings();break;
     case 'tab':TAB=id||'buy';SFX.click();renderDayPanel();
       document.querySelectorAll('#tabs .tab').forEach(function(t){
         t.classList.toggle('on',t.dataset.id===TAB)});break;
@@ -1730,6 +1884,10 @@ document.addEventListener('click',function(e){
     case 'nspeed':toggleSpeed();break;
     case 'talents':SFX.click();offerTalents();break;
     case 'pickTalent':pickTalent(id);break;
+    case 'career':showCareer();break;
+    case 'settings':showSettings();break;
+    case 'coachNext':coachNext();break;
+    case 'coachSkip':coachSkip();break;
     case 'syncCenter':showSyncCenter();break;
     case 'syncExport':showSyncExport();break;
     case 'syncCopy':doSyncCopy();break;
