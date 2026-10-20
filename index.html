@@ -271,7 +271,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.10.0 · 2026-10-19</div>
+    <div class="game-ver">内测版 v0.10.1 · 2026-10-19</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -602,9 +602,10 @@ const DIFFS=[
   {id:'hell',  n:'🔥 地狱', ic:'☠️', d:'起始 ¥150 · 租金 +150% · 客流 -40%', money:150, rent:2.5, flow:.6,  price:1.6},
 ];
 function diff(){return G&&G.difficulty?DIFFS.find(function(d){return d.id===G.difficulty})||DIFFS[1]:DIFFS[1]}
-function freshG(){return{day:1,money:diff().money,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},tp:0,
+function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]:diff();
+  return{day:1,money:d.money,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},tp:0,
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0},over:null,
-  lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:'norm'}}
+  lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id}}
 
 /* ================= 存档 ================= */
 function saveGame(){try{if(G&&!G.over){G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
@@ -651,6 +652,9 @@ function sanitizeSave(d){
     var mst={};RECIPES.forEach(function(r){var v=Math.round(+((d.mastery||{})[r.id])||0);if(v>0)mst[r.id]=clamp(v,0,99999)});
     g.mastery=mst;
     g.loginDates=(Array.isArray(d.loginDates)?d.loginDates:[]).filter(function(s){return typeof s==='string'&&/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)}).slice(-60);
+    g.quest=(d.quest&&typeof d.quest==='object'&&typeof d.quest.txt==='string'&&isFinite(+d.quest.rew))
+      ?{k:String(d.quest.k||'q'),txt:String(d.quest.txt).slice(0,50),x:clamp(Math.round(+d.quest.x||0),0,1e9),rew:clamp(Math.round(+d.quest.rew||0),0,1e9),done:!!d.quest.done}
+      :null;
     g.skin=SKINS.some(function(s){return s.id===d.skin})?d.skin:'default';
     g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
     g.tp=clamp(Math.round(+d.tp||0),0,999);
@@ -1011,7 +1015,7 @@ function chooseDiff(){
     '</div>'
   }).join('')+'</div>';
   showModal('<h3>🎚️ 选择难度</h3><div class="mtxt">难度影响起始资金、租金、客流、食材售价。选好后本次重开生效。</div>'+h,true);
-}+
+}
 function startFirst(){
   closeModal();
   checkLogin();
@@ -1041,7 +1045,9 @@ function checkLogin(){
   if(st>=7)checkAch('login7');
   saveGame();saveLife();
 }
-function continueGame(){  if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
+function continueGame(){
+  if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
+  if(!G.quest)rollQuest();
   var offlineMin=Math.floor((Date.now()-G.lastTs)/60000);
   if(offlineMin>=30){
     var rate=8+(G.ups.stall||0)*3+staffSpeedSum()*5;
@@ -1135,7 +1141,7 @@ function renderDay(){
   $('#dayStatus').innerHTML=
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
-    '<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>'+
+    (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
     (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
   $('#tabs').innerHTML=TABS.map(function(t){
@@ -1356,7 +1362,7 @@ function doPrestigeGo(){
   LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');
   var p=(G.prestiges||0)+1;
   var oldDiff=G.difficulty;
-  G=freshG();G.prestiges=p;G.money=300+300*p;G.difficulty=oldDiff||'norm';
+  G=freshG(oldDiff);G.prestiges=p;G.money=300+300*p;
   rollWeather();rollEvent();rollQuest();
   saveGame();closeModal();
   toast('🏪 分店开业！收入永久 +'+(p*30)+'%','gold');
@@ -1614,7 +1620,7 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
     '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
-    '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
+    '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
     '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
     (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
   $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div><div class="btn big" data-act="shareCard" style="margin-top:8px">📸 生成分享卡片</div><div class="btn big" data-act="leaderboard" style="margin-top:8px">🏆 查看排行榜</div>';
@@ -1711,7 +1717,7 @@ document.addEventListener('click',function(e){
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
-    case 'pickDiff':G=freshG();G.difficulty=id;rollWeather();rollEvent();rollQuest();closeModal();renderDay();checkLogin();break;
+    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();closeModal();renderDay();checkLogin();break;
     case 'startGo':chooseDiff();break;
     case 'shareCard':shareCard();break;
     case 'saveCard':saveCard();break;
@@ -1764,6 +1770,7 @@ document.addEventListener('click',function(e){
   showScreen('scr-menu');
   try{SYNC.boot()}catch(e){}
 })();
+
 </script>
 </body>
 </html>
