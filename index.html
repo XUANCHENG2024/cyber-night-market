@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.16.0 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.17.2 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -872,14 +872,40 @@ const MGR_SKILLS=[
   {id:'flow',n:'人脉型',ic:'🤝',d:'客流 +10%/级',pw:.10},
 ];
 function mgrSk(m){return MGR_SKILLS.find(function(k){return k.id===m.sk})||null}
-function mgrSlots(){return (G&&G.prestiges)||0}
-function mgrCapSum(){return (G&&G.managers?G.managers:[]).reduce(function(a,m){return a+(m.cap||0)},0)}
-function mgrEff(sk){var k=MGR_SKILLS.find(function(x){return x.id===sk});if(!k)return 0;return (G&&G.managers?G.managers:[]).reduce(function(a,m){return a+(m.sk===sk?m.lv*k.pw:0)},0)}
+function mgrSlots(){return (G&&G.shops)?G.shops.length:0} /* v0.17.0 槽位=店铺数（一店一店长） */
+function activeMgr(){var s=activeShop();if(!s||!G||!G.managers)return null;return G.managers.filter(function(m){return m.shop===s.id})[0]||null}
+function mgrCapSum(){var m=activeMgr();return m?m.cap:0} /* v0.17.0 仅活跃店店长供管理力 */
+function mgrEff(sk){var k=MGR_SKILLS.find(function(x){return x.id===sk});var m=activeMgr();if(!k||!m||m.sk!==sk)return 0;return m.lv*k.pw}
 function mgrSpeedK(){return 1+mgrEff('fast')}
 function mgrPatK(){return 1/(1+mgrEff('hype'))}
 function mgrPriceK(){return 1+mgrEff('chef')}
 function mgrFlowK(){return 1+mgrEff('flow')}
 function staffCapMax(){return 3+mgrCapSum()}
+
+/* ================= v0.17.0 地图开分店 =================
+ * 模式：活跃店=G 顶字段，休眠店=snap 快照；saveGame 前 syncShop 双向同步 */
+function mkShop(id,n,main,city,tier,variant){
+  return{id:id,n:n,main:!!main,city:city,venue:{tier:tier,variant:variant},lv:1,xp:0,
+    money:0,dayBuy:0,stat:{earn:0,served:0,days:0},rep7:[],
+    snap:{ings:{},dishes:[],menu:[],staff:[],ups:{},priceMod:{},mastery:{}}};
+}
+function shopById(id){return (G&&G.shops?G.shops:[]).find(function(s){return s.id===id})||null}
+function activeShop(){if(!G||!G.shops||!G.shops.length)return null;return shopById(G.shopId)||G.shops[0]}
+function shopLv(s){return clamp(1+Math.floor(Math.sqrt((s.xp||0)/40)),1,10)}
+function shopCity(s){return CITIES.find(function(c){return c.id===s.city})||CITIES[0]}
+function shopTier(s){return VENUE_TIERS.find(function(t){return t.id===(s.venue||{}).tier})||VENUE_TIERS[0]}
+function shopVar(s){var arr=VENUE_VARIANTS[(s.venue||{}).tier]||[];return arr.find(function(v){return v.id===(s.venue||{}).variant})||arr[0]}
+/* 店铺售价乘区：城市 payK × 场地 payK × 变体 payK × 主店旗舰 1.1 */
+function shopPayK(s){var c=shopCity(s),t=shopTier(s),v=shopVar(s);
+  return (c.buff.payK||1)*(t.payK||1)*((v&&v.buff&&v.buff.payK)||1)*(s.main?1.1:1)}
+/* 把 G 顶字段写回活跃店记录（保证注册表始终最新，存档即所见） */
+function syncShop(){
+  if(!G||!G.shops)return;
+  var s=activeShop();if(!s)return;
+  s.city=G.city;s.venue={tier:G.venue.tier,variant:G.venue.variant};
+  s.money=G.money;s.dayBuy=G.dayBuy||0;s.lv=shopLv(s);
+  s.snap={ings:G.ings,dishes:G.dishes,menu:G.menu,staff:G.staff,ups:G.ups,priceMod:G.priceMod,mastery:G.mastery};
+}
 
 const ACHS=[
   {id:'first',  n:'开张首单',  d:'卖出第一份菜',         ic:'🥇', rew:{rep:5,money:50}},
@@ -982,12 +1008,13 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0,rdTry:0},over:null,
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
   priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip,
-  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null};
+  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0};
+  var s0=mkShop('s1','成都·1号店',true,'chengdu','stall','main');s0.money=g.money;s0.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};g.shops=[s0];
   grantAchDishes(g); // 成就稀有食谱随档保留（成就为账号级进度）
   return g}
 
 /* ================= 存档 ================= */
-function saveGame(){try{if(G&&!G.over){G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
+function saveGame(){try{if(G&&!G.over){syncShop();G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
   SYNC.mirrorSoon()}
 function saveLife(){try{localStorage.setItem(LIFE_KEY,JSON.stringify({life:LIFE,ach:ACH}))}catch(e){}
   SYNC.mirrorSoon()}
@@ -1045,7 +1072,8 @@ function sanitizeSave(d){
       if(!m||typeof m!=='object')return null;
       var msk=MGR_SKILLS.some(function(k){return k.id===m.sk})?m.sk:choice(MGR_SKILLS).id;
       var mlv=clamp(Math.round(+m.lv||1),1,3);
-      return{id:String(m.id||('mg_x')).slice(0,20),n:String(m.n||'店长').slice(0,8),lv:mlv,sk:msk,cap:clamp(Math.round(+m.cap||(2+mlv)),1,8)};
+      return{id:String(m.id||('mg_x')).slice(0,20),n:String(m.n||'店长').slice(0,8),lv:mlv,sk:msk,cap:clamp(Math.round(+m.cap||(2+mlv)),1,8),
+        shop:(typeof m.shop==='string')?String(m.shop).slice(0,20):null}; /* v0.17.0 派驻店铺 */
     }).filter(Boolean);
     var sCapMax=3+g.managers.reduce(function(a,m){return a+m.cap},0);
     g.staff=(Array.isArray(d.staff)?d.staff:[]).slice(0,sCapMax).map(function(s){var sk=(s&&STAFF_SKILLS.some(function(k){return k.id===s.sk}))?s.sk:choice(STAFF_SKILLS).id;return{n:String((s&&s.n)||'员工').slice(0,8),v:1,sk:sk}});
@@ -1107,6 +1135,7 @@ function sanitizeSave(d){
     g.vipMap=vm2;
     g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
     g.tp=clamp(Math.round(+d.tp||0),0,999);
+    g.dayBuy=clamp(Math.round(+d.dayBuy||0),0,1e9);
     g.difficulty=DIFFS.some(function(x){return x.id===d.difficulty})?d.difficulty:'norm';
     if(g.skinsOwned.indexOf('default')<0)g.skinsOwned.push('default');
     if(g.skinsOwned.indexOf(g.skin)<0)g.skin='default';
@@ -1126,6 +1155,68 @@ function sanitizeSave(d){
     })();
     /* v0.14.0 菜单城市清洗：异地菜系不允许留在菜单上 */
     g.menu=g.menu.filter(function(id){var r=recById(id);return r&&(!r.city||r.city===g.city)});
+    /* v0.17.0 店铺注册表清洗 + 旧档迁移 */
+    var shops=[];
+    (Array.isArray(d.shops)?d.shops:[]).slice(0,20).forEach(function(s){
+      if(!s||typeof s!=='object')return;
+      var cid=(typeof s.city==='string'&&CITIES.some(function(c){return c.id===s.city}))?s.city:'chengdu';
+      var tid='stall',vid='main';
+      if(s.venue&&typeof s.venue==='object'&&VENUE_TIERS.some(function(t){return t.id===s.venue.tier})){
+        tid=s.venue.tier;var arr2=VENUE_VARIANTS[tid]||[];
+        vid=arr2.some(function(v){return v.id===s.venue.variant})?s.venue.variant:arr2[0].id;
+      }
+      var ns=mkShop(String(s.id||('s'+(shops.length+1))).slice(0,20),String(s.n||('分店'+(shops.length+1))).slice(0,12),!!s.main,cid,tid,vid);
+      ns.xp=clamp(Math.round(+s.xp||0),0,1e7);ns.lv=shopLv(ns);
+      ns.money=clamp(Math.round(+s.money||0),0,1e9);
+      ns.dayBuy=clamp(Math.round(+s.dayBuy||0),0,1e9);
+      var st=(s.stat&&typeof s.stat==='object')?s.stat:{};
+      ns.stat={earn:clamp(Math.round(+st.earn||0),0,1e12),served:clamp(Math.round(+st.served||0),0,1e9),days:clamp(Math.round(+st.days||0),0,9999)};
+      ns.rep7=(Array.isArray(s.rep7)?s.rep7:[]).slice(-7).map(function(r){
+        if(!r||typeof r!=='object')return null;
+        return{d:clamp(Math.round(+r.d||0),0,9999),gross:clamp(Math.round(+r.gross||0),0,1e12),
+          cost:clamp(Math.round(+r.cost||0),0,1e12),net:clamp(Math.round(+r.net||0),-1e12,1e12),serve:clamp(Math.round(+r.serve||0),0,1e9)};
+      }).filter(Boolean);
+      /* 休眠店快照清洗（活跃店快照随后由 g 顶字段覆盖） */
+      var sp=(s.snap&&typeof s.snap==='object')?s.snap:{};
+      var sings={};INGS.forEach(function(ig){var v2=Math.floor(+((sp.ings||{})[ig.id])||0);if(v2>0&&(!ig.city||ig.city===cid))sings[ig.id]=clamp(v2,0,999)});
+      var sdishes=(Array.isArray(sp.dishes)?sp.dishes:[]).filter(function(id){return recById(id)});
+      var smenu=sdishes.filter(function(id){var rr=recById(id);return (Array.isArray(sp.menu)?sp.menu:[]).indexOf(id)>=0&&rr&&(!rr.city||rr.city===cid)});
+      var sstaff=(Array.isArray(sp.staff)?sp.staff:[]).slice(0,99).map(function(x){var sk2=(x&&STAFF_SKILLS.some(function(k){return k.id===x.sk}))?x.sk:choice(STAFF_SKILLS).id;return{n:String((x&&x.n)||'员工').slice(0,8),v:1,sk:sk2}});
+      var sups={};UPS.forEach(function(u){var v3=Math.round(+((sp.ups||{})[u.id])||0);if(v3>0)sups[u.id]=clamp(v3,0,5)});
+      var spm={};RECIPES.forEach(function(r){var v4=+((sp.priceMod||{})[r.id]);if(isFinite(v4)&&v4>0){v4=clamp(Math.round(v4*10)/10,.5,1.5);if(v4!==1)spm[r.id]=v4}});
+      var smst={};RECIPES.forEach(function(r){var v5=Math.round(+((sp.mastery||{})[r.id])||0);if(v5>0)smst[r.id]=clamp(v5,0,99999)});
+      ns.snap={ings:sings,dishes:sdishes,menu:smenu,staff:sstaff,ups:sups,priceMod:spm,mastery:smst};
+      shops.push(ns);
+    });
+    /* 旧档迁移：无 shops → 用当前经营状态建主店 */
+    if(!shops.length){
+      var mig=mkShop('s1',(CITIES.find(function(c){return c.id===g.city})||CITIES[0]).n+'·1号店',true,g.city,g.venue.tier,g.venue.variant);
+      mig.money=g.money;
+      shops=[mig];
+    }
+    /* 恰好 1 家主店 */
+    var mainSeen=false;
+    shops.forEach(function(s){if(s.main&&!mainSeen)mainSeen=true;else s.main=false});
+    if(!mainSeen)shops[0].main=true;
+    g.shops=shops;
+    g.shopId=(typeof d.shopId==='string'&&shops.some(function(s){return s.id===d.shopId}))?d.shopId:(shops.filter(function(s){return s.main})[0]||shops[0]).id;
+    /* 店长派驻校验：店必须存在且一店一店长；旧档（全员无派驻）首名店长自动派驻主店 */
+    var taken={};
+    g.managers.forEach(function(m){
+      if(m.shop&&shops.some(function(s){return s.id===m.shop})&&!taken[m.shop])taken[m.shop]=1;
+      else m.shop=null;
+    });
+    if(!g.managers.some(function(m){return m.shop})&&g.managers.length)
+      g.managers[0].shop=(shops.filter(function(s){return s.main})[0]||shops[0]).id;
+    /* 休眠店员工数按本店店长管理力裁剪 */
+    shops.forEach(function(s){
+      var m2=g.managers.filter(function(m){return m.shop===s.id})[0];
+      s.snap.staff=s.snap.staff.slice(0,3+(m2?m2.cap:0));
+    });
+    /* 活跃店记录与 g 顶字段对齐（顶字段为准） */
+    var as=shops.filter(function(s){return s.id===g.shopId})[0];
+    as.city=g.city;as.venue={tier:g.venue.tier,variant:g.venue.variant};as.money=g.money;as.lv=shopLv(as);
+    as.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};
     return g;
   }catch(e){return null}
 }
@@ -1405,7 +1496,7 @@ function showCareer(){
     ['🏆 累计接待顾客', fmt(LIFE.served)+' 位'],
     ['💰 生涯累计营收', '¥'+fmt(LIFE.earned)],
     ['🌙 单晚最佳营收', '¥'+fmt(LIFE.bestDay)],
-    ['🏪 连锁分店', LIFE.brands+' 家'],
+    ['🏪 历史最多分店', LIFE.brands+' 家'],
     ['🏅 成就解锁', ACHS.filter(function(a){return ACH[a.id]}).length+' / '+ACHS.length],
   ];
   if(G){
@@ -1549,7 +1640,7 @@ function renderTop(){
 /* ================= 主菜单 ================= */
 function renderMenuLife(){
   $('#menuLife').innerHTML=
-    '<div class="ml">🏆 生涯战绩：接待 '+fmt(LIFE.served)+' 位 · 累计 ¥'+fmt(LIFE.earned)+' · 分店 '+LIFE.brands+' 家 · 单晚最佳 ¥'+fmt(LIFE.bestDay)+'</div>'+
+    '<div class="ml">🏆 生涯战绩：接待 '+fmt(LIFE.served)+' 位 · 累计 ¥'+fmt(LIFE.earned)+' · 历史分店 '+LIFE.brands+' 家 · 单晚最佳 ¥'+fmt(LIFE.bestDay)+'</div>'+
     '<div class="achs">'+ACHS.map(function(a){
       return '<span class="'+(ACH[a.id]?'on':'')+'" title="'+a.n+'：'+a.d+'">'+a.ic+'</span>'}).join('')+'</div>';
 }
@@ -1662,10 +1753,20 @@ function continueGame(){
     var rate=8+(G.ups.stall||0)*3+staffSpeedSum()*5;
     var cap=Math.min(offlineMin,480);
     var gain=Math.round(rate*cap/60*(1+.3*(G.prestiges||0)));
-    if(gain>0){
+    /* v0.17.2 托管店离线收益：按日均毛收 × 离线时长占比（8h≈1/3 天）计入各店 */
+    var shopGains=[];
+    (G.shops||[]).forEach(function(s){
+      if(s.id===G.shopId)return;
+      var m=G.managers.filter(function(x){return x.shop===s.id})[0];if(!m)return;
+      var g2=Math.round((40+shopLv(s)*25+m.lv*10)*shopPayK(s)*cap/1440);
+      if(g2>0){s.money+=g2;s.stat.earn+=g2;shopGains.push([s.n,g2])}
+    });
+    if(gain>0||shopGains.length){
       G.money+=gain;
       modalShown=true;
-      showModal('<h3>🌙 离线收益</h3><div class="mtxt">你离开了 '+Math.floor(cap/60)+' 小时 '+(cap%60)+' 分钟，摊位自动经营收入 <b style="color:var(--gr)">¥'+fmt(gain)+'</b>。<br>（上限 8 小时，升级摊位/雇员工可提高收益）</div>'+
+      showModal('<h3>🌙 离线收益</h3><div class="mtxt">你离开了 '+Math.floor(cap/60)+' 小时 '+(cap%60)+' 分钟，摊位自动经营收入 <b style="color:var(--gr)">¥'+fmt(gain)+'</b>。'+
+        shopGains.map(function(x){return '<br>🧑‍💼 托管店「'+esc(x[0])+'」+¥'+fmt(x[1])}).join('')+
+        '<br>（上限 8 小时，升级摊位/雇员工可提高收益；托管店收益已直接入账各店）</div>'+
         '<div class="mops"><div class="btn mg" data-act="closeModal">收下</div></div>',true);
       SFX.coin();
     }
@@ -1785,7 +1886,7 @@ function checkAch(id){
 }
 
 /* ================= 白天渲染 ================= */
-const TABS=[['buy','🛒 进货'],['map','🗺️ 地图'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
+const TABS=[['buy','🛒 进货'],['map','🗺️ 地图'],['shops','🏪 店铺'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
 function renderDay(){
   applySkin();
   showScreen('scr-day');
@@ -1799,7 +1900,8 @@ function renderDay(){
   $('#dayStatus').innerHTML=
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
     '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span><br><span style="color:var(--cy);font-size:11px">🍜 本地特色：'+cityDishes(CC.id).map(function(r){var got=G.dishes.indexOf(r.id)>=0;return got?r.n:'🔒'+r.n}).join('、')+'<br>🫙 特产食材：'+INGS.filter(function(i){return i.city===CC.id}).map(function(i){return i.ic+i.n}).join('、')+'</span>'+
-      '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div></div>'+
+      '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div>'+
+      '<div class="btn mg" data-act="tab" data-id="shops" style="margin-top:6px;padding:8px 10px;font-size:12px">🏪 我的店铺（'+G.shops.length+' 家）—— 当前「'+esc(activeShop().n)+'」</div></div>'+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
     (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
@@ -1822,6 +1924,7 @@ function renderDayPanel(){
   else if(TAB==='menu')el.innerHTML=panelMenu();
   else if(TAB==='dex')el.innerHTML=panelDex();
   else if(TAB==='staff')el.innerHTML=panelStaff();
+  else if(TAB==='shops')el.innerHTML=panelShops();
   else if(TAB==='map')el.innerHTML=panelMap();
   else el.innerHTML=panelUps();
 }
@@ -1922,15 +2025,17 @@ function panelStaff(){
   var h='';
   /* v0.16.0 店长区块 */
   var slots=mgrSlots();
-  h+='<div class="panel-tip">🧑‍💼 店长（'+G.managers.length+'/'+slots+' 槽位 · 每开 1 家分店 +1）</div>';
-  if(slots<=0){
-    h+='<div class="staff-row"><span style="color:var(--dim)">开设分店后可招募店长：被动加成 + 扩大员工上限 + 每日自动补员</span></div>';
+  h+='<div class="panel-tip">🧑‍💼 店长（'+G.managers.length+'/'+slots+' 槽位 · 每开设 1 家店铺可任命 1 名，去「🏪 店铺」任命）</div>';
+  if(!G.managers.length){
+    h+='<div class="staff-row"><span style="color:var(--dim)">还没有店长：招募后任命到店 —— 托管自动经营 / 派驻当前店提供被动加成 + 扩大员工上限 + 每日自动补员</span></div>';
   }else{
     h+=G.managers.map(function(m,mi){
       var msk=mgrSk(m);
-      return '<div class="staff-row"><span>🧑‍💼 '+esc(m.n)+' <span class="stsk">Lv'+m.lv+' '+(msk?msk.ic+msk.n:'')+'</span></span><span style="color:var(--dim)">管理 '+m.cap+' 人'+(msk?' · '+msk.d:'')+'</span><span class="btn" data-act="fireMgr" data-id="'+mi+'" style="padding:4px 10px;font-size:12px">卸任</span></div>';
+      return '<div class="staff-row"><span>🧑‍💼 '+esc(m.n)+' <span class="stsk">Lv'+m.lv+' '+(msk?msk.ic+msk.n:'')+'</span></span><span style="color:var(--dim)">管理 '+m.cap+' 人 · '+(m.shop?('派驻「'+esc((shopById(m.shop)||{n:'?'}).n)+'」'):'待命')+(msk?' · '+msk.d:'')+'</span><span class="btn" data-act="fireMgr" data-id="'+mi+'" style="padding:4px 10px;font-size:12px">卸任</span></div>';
     }).join('');
-    if(G.managers.length<slots){
+  }
+  /* 候选池与招募入口与「是否有在任店长」解耦：0 店长也必须能招募（v0.17.0 修复首招死锁） */
+  if(G.managers.length<slots){
       genMgrPool();
       if(G.mgrPool&&G.mgrPool.cands.length){
         h+='<div class="panel-tip">📋 候选店长（每日 0 点刷新）</div>';
@@ -1940,7 +2045,6 @@ function panelStaff(){
         }).join('');
         h+='<div class="btn" data-act="rerollMgr"'+(G.money<100?' disabled':'')+'>🔄 刷新候选 ¥100</div>';
       }
-    }
   }
   var cap=staffCapMax();
   h+='<div class="panel-tip" style="margin-top:14px">👨‍🍳 员工（'+G.staff.length+'/'+cap+'）</div>';
@@ -1974,6 +2078,45 @@ function buySkin(id){
   saveGame();saveLife();renderDayPanel();renderTop();
   if(G.skinsOwned.length>=5)checkAch('skin5');
   if(G.staff.length>=3)checkAch('sk3');
+}
+/* ---- v0.17.0 店铺面板：列表/切换/主店/任命/报表 ---- */
+function panelShops(){
+  var AS=activeShop();
+  var h='<div class="panel-tip">🏪 店铺网络：共 <b>'+G.shops.length+'</b> 家 · 当前经营「<b style="color:var(--yl)">'+esc(AS.n)+'</b>」<br>'+
+    '开店费 ¥'+fmt(shopCost())+'（去「🗺️ 地图」点城市行的「开店」）· 店长槽位 '+G.managers.length+'/'+mgrSlots()+' · 主店旗舰：售价 +10%</div>';
+  h+=G.shops.map(function(s){
+    var isCur=s.id===G.shopId;
+    var sc=shopCity(s),st=shopTier(s),sv=shopVar(s);
+    var mgr=G.managers.filter(function(m){return m.shop===s.id})[0]||null;
+    var state=isCur?'<b style="color:var(--gr)">▶ 经营中（你亲自打理）</b>':
+      mgr?'<span style="color:var(--cy)">🧑‍💼 '+esc(mgr.n)+' Lv'+mgr.lv+' 托管中（每日自动经营）</span>':
+      '<span style="color:var(--dim)">💤 休眠（无店长，需接管或任命）</span>';
+    var rep='';
+    if(s.rep7.length){
+      rep='<div style="font-size:11px;color:var(--dim);margin-top:4px">📊 近 '+s.rep7.length+' 天：'+s.rep7.map(function(r){
+        return 'D'+r.d+' <span style="color:'+(r.net>=0?'var(--gr)':'var(--rd)')+'">'+(r.net>=0?'+':'-')+'¥'+fmt(Math.abs(r.net))+'</span>';
+      }).join(' · ')+'</div>';
+    }
+    var ops='';
+    if(!isCur)ops+='<div class="btn sm gr" data-act="shopGo" data-id="'+s.id+'">🔄 接管经营</div>';
+    if(!s.main)ops+='<div class="btn sm yl" data-act="setMain" data-id="'+s.id+'">⭐ 设为主店</div>';
+    if(mgr)ops+='<div class="btn sm" data-act="unassignMgr" data-id="'+mgr.id+'">👋 调回店长</div>';
+    else if(G.managers.some(function(m){return !m.shop}))ops+='<div class="btn sm yl" data-act="assignAsk" data-id="'+s.id+'">🧑‍💼 任命店长</div>';
+    else ops+='<div class="btn sm" data-act="tab" data-id="staff" style="opacity:.75">无待命店长 · 去招募</div>';
+    return '<div class="up-card"><div class="dn"><b>'+(s.main?'⭐':'🏪')+' '+esc(s.n)+' Lv'+s.lv+'</b><span>'+sc.n+' · '+st.n.replace(/^[^\s]+\s/,'')+'（'+sv.n+'） · 资金 ¥'+fmt(s.money)+'</span></div>'+
+      '<div style="font-size:11px;color:var(--dim)">'+state+'<br>累计：营收 ¥'+fmt(s.stat.earn)+' · 接待 '+fmt(s.stat.served)+' 客 · 经营 '+s.stat.days+' 天</div>'+rep+
+      '<div class="ops">'+ops+'</div></div>';
+  }).join('');
+  return h;
+}
+function assignAsk(sid){
+  var s=shopById(sid);if(!s)return;
+  var idle=G.managers.filter(function(m){return !m.shop});
+  if(!idle.length){toast('没有待命店长，去「👨‍🍳 后厨」招募','yl');SFX.bad();return}
+  showModal('<h3>🧑‍💼 任命店长 →「'+esc(s.n)+'」</h3><div class="mtxt">派驻后：'+(sid===G.shopId?'被动加成生效':'该店每日自动经营并产出报表')+'</div>'+
+    idle.map(function(m){var k=mgrSk(m);
+      return '<div class="btn" data-act="assignMgr" data-id="'+m.id+':'+sid+'" style="margin:4px 0;font-size:12px">'+esc(m.n)+' · Lv'+m.lv+' '+(k?k.ic+k.n:'')+' · 管理 '+m.cap+' 人</div>'}).join('')+
+    '<div class="mops"><div class="btn" data-act="closeModal">取消</div></div>',true);
 }
 function panelUps(){  var h=UPS.map(function(u){
     var lvl=G.ups[u.id]||0,maxed=lvl>=5;
@@ -2029,7 +2172,7 @@ function panelMap(){
       return '<div class="vip-row" data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer">'+
         '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b><br><span style="font-size:10px;color:var(--cy)">🍜 '+cityDishes(c.id).map(function(r){return r.n}).join('、')+'</span></span>'+
         '<span style="font-size:11px;color:var(--dim)">'+c.dsc+'</span>'+
-        '<span style="font-size:11px">'+stat+'</span></div>';
+        '<span style="font-size:11px">'+stat+'<br><span class="btn sm yl" data-act="shopOpenAsk" data-id="'+c.id+'" style="padding:3px 8px;font-size:11px;margin-top:3px">🏪 开店</span></span></div>';
     }).join('')+'</div>';
 
   /* 场地矩阵（5 档 × N 变体，点击直接搬迁） */
@@ -2068,7 +2211,7 @@ function buyIng(fid,n){
   var E=ev(),CM=G.cmod||{},disc=((E&&E.buyDisc)||1)*(CM.buyDisc||1);
   var cost=Math.max(1,Math.round(ing.c*((G.talents.bulk||0)>0?.8:1)*disc))*n;
   if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
-  G.money-=cost;G.ings[fid]=cur+n;
+  G.money-=cost;G.ings[fid]=cur+n;G.dayBuy=(G.dayBuy||0)+cost; /* v0.17.2 当日采购额计入报表成本 */
   SFX.buy();saveGame();renderDayPanel();renderTop();
 }
 function rdPick(fid){
@@ -2105,7 +2248,7 @@ function rdGo(){
 
       showModal('<h3>🧪 研发成功！</h3><div class="mtxt"><p style="text-align:center;font-size:30px;margin:10px 0">🍜</p>'+
         '<p style="text-align:center"><b style="font-size:16px;color:var(--yl)">'+hit.n+'</b></p>'+
-        '<p style="text-align:center">'+(CAT_IC[hit.cat]||'')+' · 售价 ¥'+hit.p+(hit.city?' · 🌆 '+cityName(hit.city)+'特色':'')+'</p>'+
+        '<p style="text-align:center">'+(CAT_IC[hit.cat]||'')+' · 售价 ¥'+dishPrice(hit)+(hit.city?' · 🌆 '+cityName(hit.city)+'特色':'')+'</p>'+
         '<p style="text-align:center;color:var(--dim);font-size:12px">记得去「📋 菜单」上架才会有人点！</p></div>'+
         '<div class="mops"><div class="btn mg" data-act="closeModal">太好了</div></div>');
     }
@@ -2161,6 +2304,7 @@ function genMgrPool(force){
     cands.push({id:'mg_'+Date.now().toString(36)+'_'+i,n:choice(STAFF_NAMES),lv:lv,sk:sk.id,cap:2+lv,cost:cost});
   }
   G.mgrPool={day:G.day,cands:cands};
+  saveGame(); /* 生成即持久化：防 F5 刷新免费重随候选、绕过 ¥100 刷新费 */
 }
 function rerollMgrPool(){
   if(G.money<100){toast('资金不足','rd');SFX.bad();return}
@@ -2169,13 +2313,13 @@ function rerollMgrPool(){
   saveGame();renderDayPanel();renderTop();
 }
 function hireMgr(id){
-  if(G.managers.length>=mgrSlots()){toast('没有空余店长槽位（每开 1 家分店 +1 槽位）','rd');SFX.bad();return}
+  if(G.managers.length>=mgrSlots()){toast('没有空余店长槽位（每开设 1 家店铺可任命 1 名店长）','rd');SFX.bad();return}
   genMgrPool();
   if(!G.mgrPool)return;
   var c=G.mgrPool.cands.find(function(x){return x.id===id});if(!c)return;
   if(G.money<c.cost){toast('资金不足','rd');SFX.bad();return}
   G.money-=c.cost;
-  G.managers.push({id:c.id,n:c.n,lv:c.lv,sk:c.sk,cap:c.cap});
+  G.managers.push({id:c.id,n:c.n,lv:c.lv,sk:c.sk,cap:c.cap,shop:null}); /* v0.17.0 新招店长待命，需任命派驻 */
   G.mgrPool.cands=G.mgrPool.cands.filter(function(x){return x.id!==id});
   var sk=mgrSk(c);
   SFX.hire();toast('🧑‍💼 '+c.n+' 入职店长！'+(sk?sk.ic+sk.n:'')+' · 管理 '+c.cap+' 人','gr');
@@ -2192,12 +2336,124 @@ function fireMgr(idx){
   saveGame();renderDayPanel();renderTop();
 }
 function autoRecruit(){
-  if(!G||!G.managers.length)return;
+  var m=activeMgr();if(!m)return; /* v0.17.0 仅派驻活跃店的店长自动补员 */
   if(G.staff.length>=staffCapMax())return;
   var name=choice(STAFF_NAMES);
   var sk=choice(STAFF_SKILLS);
   G.staff.push({n:name,v:1,sk:sk.id});
   toast('🧑‍💼 店长自动招募：'+name+' 入职（'+sk.ic+sk.n+'）','gr');
+}
+/* ---- v0.17.0 开店 / 切换 / 主店 ---- */
+function shopCost(){return Math.round(600*Math.pow(1.6,(G?G.shops.length:1)-1))}
+function shopOpenAsk(cid){
+  var c=CITIES.find(function(x){return x.id===cid});if(!c)return;
+  var cost=shopCost();
+  var opts=VENUE_TIERS.map(function(t){
+    return (VENUE_VARIANTS[t.id]||[]).map(function(v){
+      return '<div class="btn" data-act="shopOpen" data-id="'+cid+':'+t.id+':'+v.id+'" style="margin:4px 0;font-size:12px">'+t.n+' · '+v.n+'（日租 ¥'+t.rent+' · 售价 ×'+t.payK+'）</div>';
+    }).join('');
+  }).join('');
+  showModal('<h3>🏪 在「'+c.n+'」开设分店</h3><div class="mtxt">开店费 <b style="color:var(--yl)">¥'+fmt(cost)+'</b>（从当前店资金扣除，新店自带 ¥200 启动金）。已有 '+G.shops.length+' 家店。<br>选择场地档位：</div>'+opts+'<div class="mops"><div class="btn" data-act="closeModal">再想想</div></div>',true);
+}
+function shopOpen(payload){
+  var p=String(payload||'').split(':');if(p.length!==3)return;
+  var c=CITIES.find(function(x){return x.id===p[0]});if(!c)return;
+  var t=VENUE_TIERS.find(function(x){return x.id===p[1]});if(!t)return;
+  var arr=VENUE_VARIANTS[t.id]||[],v=arr.find(function(x){return x.id===p[2]})||arr[0];if(!v)return;
+  var cost=shopCost();
+  if(G.money<cost){toast('资金不足（需 ¥'+fmt(cost)+'）','rd');SFX.bad();return}
+  G.money-=cost;
+  var ns=mkShop('s'+Date.now().toString(36),c.n+'·'+(G.shops.length+1)+'号店',false,c.id,t.id,v.id);
+  ns.money=200;
+  G.shops.push(ns);
+  if(G.shops.length>LIFE.brands){LIFE.brands=G.shops.length;saveLife()} /* 生涯「分店 N 家」跟随真实店铺数 */
+  checkAch('brand');if(G.shops.length-1>=3)checkAch('brands3');if(G.shops.length-1>=5)checkAch('brands5'); /* v0.17.0 真实开店触发连锁成就（与 prestige 触发幂等共存） */
+  SFX.upgrade();closeModal();
+  toast('🏪 「'+ns.n+'」开张！去「🏪 店铺」页接管经营或派驻店长','gold');
+  saveGame();renderDay();
+}
+function shopGo(id){
+  if(NIGHT&&NIGHT.active){toast('夜晚营业中，收摊后才能切换店铺','rd');SFX.bad();return}
+  var s=shopById(id);if(!s)return;
+  if(s.id===G.shopId){toast('已经在这家店了','yl');return}
+  syncShop(); /* 写回旧店 */
+  G.shopId=s.id;G.city=s.city;G.venue={tier:s.venue.tier,variant:s.venue.variant};G.money=s.money;G.dayBuy=s.dayBuy||0;
+  G.ings=s.snap.ings;G.dishes=s.snap.dishes;G.menu=s.snap.menu;G.staff=s.snap.staff;
+  G.ups=s.snap.ups;G.priceMod=s.snap.priceMod;G.mastery=s.snap.mastery;
+  SFX.click();saveGame();renderDay();
+  toast('🔄 已切换到「'+s.n+'」（'+shopCity(s).n+' · '+shopTier(s).n+'）','gr');
+}
+function setMain(id){
+  var s=shopById(id);if(!s)return;
+  if(s.main){toast('这家店已经是主店了','yl');return}
+  G.shops.forEach(function(x){x.main=false});
+  s.main=true;
+  SFX.upgrade();toast('⭐「'+s.n+'」升为主店：旗舰效应，全店售价 +10%','gold');
+  saveGame();renderDayPanel();renderTop();
+}
+/* ---- v0.17.0 店主任命（一店一店长，待命店长无效果） ---- */
+function assignMgr(mid,sid){
+  var m=G.managers.find(function(x){return x.id===mid});if(!m)return;
+  var s=shopById(sid);if(!s)return;
+  var occ=G.managers.filter(function(x){return x.shop===sid&&x.id!==mid})[0];
+  if(occ){toast('这家店已有店长（'+occ.n+'），先将其调回','rd');SFX.bad();return}
+  m.shop=sid;
+  SFX.click();toast('🧑‍💼 '+m.n+' 派驻「'+s.n+'」'+(sid===G.shopId?'：被动加成生效':'：每日自动打理并出报表'),'gr');
+  saveGame();renderDayPanel();renderTop();
+}
+function unassignMgr(mid){
+  var m=G.managers.find(function(x){return x.id===mid});if(!m)return;
+  var s=shopById(m.shop);
+  m.shop=null;
+  SFX.click();toast('👋 '+m.n+' 调回待命'+(s?'（「'+s.n+'」将休眠，需亲自接管经营）':''),'yl');
+  saveGame();renderDayPanel();renderTop();
+}
+/* ---- v0.17.0 店长 AI：每日自动经营托管店（挂 nextDay 的 saveGame 前，随档持久化） ----
+ * 规则：营收(店lv+店长lv+城市/场地payK+主店旗舰)×(±10%随机) － 自动采购补货 － 租杂15% － 工资20/人
+ * 技能：fast 营收+15% / chef 营收+6%·级 / hype 接待+30% / flow 采购-20%/级 */
+function autoShopDaily(){
+  if(!G||!G.shops)return;
+  var totNet=0,did=0;
+  G.shops.forEach(function(s){
+    if(s.id===G.shopId)return;             /* 活跃店由玩家经营 */
+    var m=G.managers.filter(function(x){return x.shop===s.id})[0];
+    if(!m)return;                          /* 无店长 → 休眠（无收益无成本） */
+    var lv=shopLv(s),t=shopTier(s);
+    var payK=shopPayK(s);
+    var flowK=(shopCity(s).buff.flow||1)*(t.flow||1);
+    var gross=Math.round((40+lv*25+m.lv*10)*payK*(0.8+flowK*0.2)*(0.9+Math.random()*0.2));
+    if(m.sk==='fast')gross=Math.round(gross*1.15);
+    if(m.sk==='chef')gross=Math.round(gross*(1+m.lv*0.06));
+    var serve=5+lv*3+m.lv*2;
+    if(m.sk==='hype')serve=Math.round(serve*1.3);
+    /* 自动采购：菜单菜品所需食材补到 4 份（异地特产买不到则跳过） */
+    var buyCost=0,needI={};
+    (s.snap.menu||[]).forEach(function(id){var r=recById(id);if(r){needI[r.a]=1;needI[r.b]=1}});
+    Object.keys(needI).forEach(function(k){
+      var ing=INGS.find(function(i){return i.id===k});if(!ing)return;
+      if(ing.city&&ing.city!==s.city)return;
+      var cur=s.snap.ings[k]||0;
+      if(cur<4){var n=4-cur,c2=ing.c*n;if(s.money-buyCost>=c2){s.snap.ings[k]=cur+n;buyCost+=c2}}
+    });
+    if(m.sk==='flow')buyCost=Math.round(buyCost*(1-m.lv*0.2));
+    /* 营业消耗：每道菜单菜耗 1 份食材 */
+    (s.snap.menu||[]).forEach(function(id){var r=recById(id);if(!r)return;
+      if((s.snap.ings[r.a]||0)>0)s.snap.ings[r.a]--;
+      if((s.snap.ings[r.b]||0)>0)s.snap.ings[r.b]--});
+    var cost=buyCost+Math.round(gross*0.15)+Math.round((t.rent||0)*0.5)+(s.snap.staff||[]).length*20+(s.dayBuy||0);
+    var net=gross-cost;
+    s.dayBuy=0; /* 当日采购额已计入成本，清零防重复 */
+    s.money=Math.max(0,s.money+net);
+    s.xp=(s.xp||0)+serve;
+    var nl=shopLv(s);
+    if(nl>s.lv)toast('🏪「'+s.n+'」升到 Lv'+nl+'！','gold');
+    s.lv=nl;
+    s.stat.earn+=gross;s.stat.served+=serve;s.stat.days++;
+    s.rep7.push({d:G.day,gross:gross,cost:cost,net:net,serve:serve});
+    if(s.rep7.length>7)s.rep7=s.rep7.slice(-7);
+    totNet+=net;did++;
+  });
+  if(did)toast('🧑‍💼 店长托管 '+did+' 家店：合计净利 '+(totNet>=0?'+¥':'-¥')+fmt(Math.abs(totNet)),totNet>=0?'gr':'rd');
 }
 function buyUp(uid){
   var u=UPS.find(function(x){return x.id===uid});if(!u)return;
@@ -2359,6 +2615,7 @@ function mastMult(id){return 1+.05*mastLvl(id)}
 function dishPrice(r){var m=(G.priceMod&&G.priceMod[r.id])||1;
   var CB=cityBuff(),VT=curVenueTier(),VB=venueBuff();
   var k=(VT.payK||1)*(CB.payK||1)*(VB.payK||1);
+  var AS=activeShop();if(AS&&AS.main)k*=1.1; /* v0.17.0 主店旗舰效应：售价 +10% */
   if(CB.catK&&CB.catK[r.cat])k*=CB.catK[r.cat];
   if(VB.catK&&VB.catK[r.cat])k*=VB.catK[r.cat];
   return Math.max(1,Math.round(r.p*m*k));
@@ -2590,7 +2847,7 @@ function shareCard(){
   x.shadowBlur=18;x.fillStyle=rank[1];x.font='bold 44px sans-serif';x.fillText(rank[0],512,301);
   x.shadowBlur=0;x.font='12px sans-serif';x.fillText('RANK',512,318);
   /* 数据芯片 2 列 × 3 行 */
-  var rows=[['🎫 接待顾客',NIGHT.servedN+' 位'],['💢 气跑',NIGHT.lostN+' 位'],['🎯 悬赏',G.quest&&G.quest.done?'✓ +¥'+G.quest.rew:'未完成'],['📟 声望',String(Math.round(G.rep))],['🏪 连锁分店',(G.prestiges||0)+' 家'],['⭐ 生涯总营收','¥'+fmt(LIFE.earned)]];
+  var rows=[['🎫 接待顾客',NIGHT.servedN+' 位'],['💢 气跑',NIGHT.lostN+' 位'],['🎯 悬赏',G.quest&&G.quest.done?'✓ +¥'+G.quest.rew:'未完成'],['📟 声望',String(Math.round(G.rep))],['🏪 历史最多分店',LIFE.brands+' 家'],['⭐ 生涯总营收','¥'+fmt(LIFE.earned)]];
   rows.forEach(function(r,i){
     var cx=34+(i%2)*272,cy=408+((i/2)|0)*96,cw=256,ch=80;
     rr(cx,cy,cw,ch,12);
@@ -2642,12 +2899,18 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   if(CB.allK&&CB.allK!==1){var bonus=Math.round(NIGHT.earn*(CB.allK-1));NIGHT.earn+=bonus;G.money+=bonus}
   // v0.13.1 每日场地租金（独立于周租）
   var VT=curVenueTier();
-  var rentTxt='';
+  var rentTxt='',rentCost=0;
   if(VT.rent>0){
-    var rentCost=Math.round(VT.rent*(diff().rent||1));
+    rentCost=Math.round(VT.rent*(diff().rent||1));
     G.money=Math.max(0,G.money-rentCost);
     rentTxt='<div class="settle-line"><span>🏪 场地日租（'+VT.n.replace(/^[^\s]+\s/,'')+'）</span><b style="color:var(--rd)">-¥'+fmt(rentCost)+'</b></div>';
   }
+  /* v0.17.0 活跃店当日经营入报表 + xp 成长 */
+  var AS2=activeShop();
+  if(AS2){AS2.xp=(AS2.xp||0)+NIGHT.servedN;AS2.stat.earn+=Math.round(NIGHT.earn);AS2.stat.served+=NIGHT.servedN;AS2.stat.days++;
+    AS2.lv=shopLv(AS2);
+    AS2.rep7.push({d:G.day,gross:Math.round(NIGHT.earn),cost:rentCost+(G.dayBuy||0),net:Math.round(NIGHT.earn)-rentCost-(G.dayBuy||0),serve:NIGHT.servedN});
+    if(AS2.rep7.length>7)AS2.rep7=AS2.rep7.slice(-7)}
   LIFE.served+=NIGHT.servedN;LIFE.earned+=NIGHT.earn;
   if(NIGHT.earn>LIFE.bestDay)LIFE.bestDay=Math.round(NIGHT.earn);
   saveLBWeek(Math.round(NIGHT.earn));
@@ -2704,19 +2967,28 @@ function pickTalent(id){
   nextDay();
 }
 function nextDay(){
-  var nd=G.day+1,rentPaid=0;
+  var nd=G.day+1,rentPaid=0,rentPull=0;
   if(nd>1&&(nd-1)%7===0){
     var rent=Math.round(150*Math.pow(1.6,(nd-1)/7-1)*diff().rent);
+    /* v0.17.1 活跃店资金不足时，自动从其他分店（资金高→低）调拨补租；全店网络凑不齐才破产 */
+    if(G.money<rent&&G.shops){
+      var pool=G.shops.filter(function(s){return s.id!==G.shopId&&s.money>0}).sort(function(a,b){return b.money-a.money});
+      for(var pi=0;pi<pool.length&&G.money<rent;pi++){
+        var take=Math.min(pool[pi].money,rent-G.money);
+        pool[pi].money-=take;G.money+=take;rentPull+=take;
+      }
+    }
     if(G.money<rent){gameOver('rent');return}
     G.money-=rent;rentPaid=rent;
   }
-  G.day=nd;
+  G.day=nd;G.dayBuy=0; /* v0.17.2 采购额按天重置，报表成本口径与托管店一致（采购+租金） */
   if(nd>7)checkAch('d7');
   rollWeather();rollEvent();rollQuest();
   autoRecruit(); /* v0.16.0 店长每日清晨免费补 1 人（在 saveGame 前，随档持久化） */
+  autoShopDaily(); /* v0.17.0 托管店每日自动经营结算（同上，随档持久化） */
   saveGame();
   renderDay();
-  if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid),'rd');
+  if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid)+(rentPull?'（从分店调拨 ¥'+fmt(rentPull)+'）':''),'rd');
   rollChoice();rollChallenge();
 }
 
@@ -2737,7 +3009,7 @@ function gameOver(reason){
     '<div class="settle-line"><span>📅 存活天数</span><b>'+(G?G.day:1)+' 天</b></div>'+
     '<div class="settle-line"><span>🎫 累计接待</span><b>'+fmt(LIFE.served)+' 位</b></div>'+
     '<div class="settle-line"><span>💰 生涯累计</span><b>¥'+fmt(LIFE.earned)+'</b></div>'+
-    '<div class="settle-line"><span>🏪 连锁分店</span><b>'+LIFE.brands+' 家</b></div>';
+    '<div class="settle-line"><span>🏪 历史最多分店</span><b>'+LIFE.brands+' 家</b></div>';
   renderMenuLife();refreshMenuContinue();
   showScreen('scr-over');
 }
@@ -2791,6 +3063,13 @@ document.addEventListener('click',function(e){
     case 'hireMgr':hireMgr(id);break;
     case 'fireMgr':fireMgr(id);break;
     case 'rerollMgr':rerollMgrPool();break;
+    case 'shopOpenAsk':shopOpenAsk(id);break;
+    case 'shopOpen':shopOpen(id);break;
+    case 'shopGo':shopGo(id);break;
+    case 'setMain':setMain(id);break;
+    case 'assignAsk':assignAsk(id);break;
+    case 'assignMgr':(function(){var p=String(id||'').split(':');if(p.length===2)assignMgr(p[0],p[1])})();break;
+    case 'unassignMgr':unassignMgr(id);break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
     case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();rollChallenge();saveGame();closeModal();renderDay();checkLogin();break;
