@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.11.3 · 2026-10-21</div>
+    <div class="game-ver">内测版 v0.12.0 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -491,35 +491,36 @@ const RECIPES=[
   {id:'r0', a:'flour',b:'meat', n:'芯片肉夹馍', p:18,cat:'st'},
   {id:'r1', a:'flour',b:'veg',  n:'电子菜煎饼', p:12,cat:'st'},
   {id:'r2', a:'flour',b:'sugar',n:'霓虹糖霜华夫',p:14,cat:'sw'},
-  {id:'r3', a:'flour',b:'tea',  n:'抹茶数据可丽',p:17,cat:'sw'},
-  {id:'r4', a:'flour',b:'ice',  n:'超导冷面',   p:13,cat:'st'},
-  {id:'r5', a:'rice', b:'meat', n:'全息卤肉饭', p:20,cat:'st'},
-  {id:'r6', a:'rice', b:'veg',  n:'纳米翡翠炒饭',p:16,cat:'st'},
-  {id:'r7', a:'rice', b:'sugar',n:'像素八宝粽', p:15,cat:'sw'},
-  {id:'r8', a:'meat', b:'veg',  n:'义体小炒肉', p:22,cat:'st'},
-  {id:'r9', a:'meat', b:'sugar',n:'蜜汁机械叉烧',p:24,cat:'st'},
+  {id:'r3', a:'flour',b:'tea',  n:'抹茶数据可丽',p:17,cat:'sw',after:['r2']},
+  {id:'r4', a:'flour',b:'ice',  n:'超导冷面',   p:13,cat:'st',after:['r1']},
+  {id:'r5', a:'rice', b:'meat', n:'全息卤肉饭', p:20,cat:'st',after:['r0']},
+  {id:'r6', a:'rice', b:'veg',  n:'纳米翡翠炒饭',p:16,cat:'st',after:['r1']},
+  {id:'r7', a:'rice', b:'sugar',n:'像素八宝粽', p:15,cat:'sw',after:['r2']},
+  {id:'r8', a:'meat', b:'veg',  n:'义体小炒肉', p:22,cat:'st',after:['r0']},
+  {id:'r9', a:'meat', b:'sugar',n:'蜜汁机械叉烧',p:24,cat:'st',after:['r0','r2']},
   {id:'r10',a:'veg',  b:'sugar',n:'蔬果轻食沙拉',p:13,cat:'sw'},
-  {id:'r11',a:'sugar',b:'fruit',n:'合成水果捞', p:13,cat:'sw'},
-  {id:'r12',a:'sugar',b:'ice',  n:'神经霜激凌', p:15,cat:'sw'},
+  {id:'r11',a:'sugar',b:'fruit',n:'合成水果捞', p:13,cat:'sw',after:['r2']},
+  {id:'r12',a:'sugar',b:'ice',  n:'神经霜激凌', p:15,cat:'sw',after:['r2','r4']},
   {id:'r13',a:'fruit',b:'ice',  n:'冰镇量子果汁',p:12,cat:'dr'},
   {id:'r14',a:'tea',  b:'ice',  n:'赛博冰茶',   p:11,cat:'dr'},
-  {id:'r15',a:'tea',  b:'fruit',n:'全息水果茶', p:16,cat:'dr'},
-  {id:'r16',a:'tea',  b:'sugar',n:'珍珠神经奶茶',p:18,cat:'dr'},
-  {id:'r17',a:'egg',  b:'flour',n:'金黄蛋香煎饼',p:14,cat:'st'},
-  {id:'r18',a:'egg',  b:'rice', n:'元气蛋炒饭', p:17,cat:'st'},
-  {id:'r19',a:'egg',  b:'meat', n:'双蛋白能量堡',p:24,cat:'st'},
-  {id:'r20',a:'egg',  b:'veg',  n:'翡翠蛋卷',   p:15,cat:'st'},
-  {id:'r21',a:'egg',  b:'sugar',n:'焦糖布丁塔', p:15,cat:'sw'},
-  {id:'r22',a:'egg',  b:'tea',  n:'茶香蒸蛋',   p:16,cat:'dr'},
-  {id:'r23',a:'egg',  b:'ice',  n:'冰镇溏心蛋', p:13,cat:'st'},
-  {id:'r24',a:'egg',  b:'fruit',n:'果香舒芙蕾', p:18,cat:'sw'},
-  {id:'r25',a:'berry',b:'fruit',n:'双莓神经塔', p:17,cat:'sw'},
-  {id:'r26',a:'berry',b:'sugar',n:'浆果爆珠慕斯',p:19,cat:'sw'},
-  {id:'r27',a:'berry',b:'ice',  n:'莓莓冷萃冰', p:14,cat:'dr'},
-  {id:'r28',a:'berry',b:'tea',  n:'莓果神经茶', p:18,cat:'dr'},
+  {id:'r15',a:'tea',  b:'fruit',n:'全息水果茶', p:16,cat:'dr',after:['r13','r14']},
+  {id:'r16',a:'tea',  b:'sugar',n:'珍珠神经奶茶',p:18,cat:'dr',after:['r14']},
+  {id:'r17',a:'egg',  b:'flour',n:'金黄蛋香煎饼',p:14,cat:'st',after:['r1']},
+  {id:'r18',a:'egg',  b:'rice', n:'元气蛋炒饭', p:17,cat:'st',after:['r6']},
+  {id:'r19',a:'egg',  b:'meat', n:'双蛋白能量堡',p:24,cat:'st',after:['r0','r17']},
+  {id:'r20',a:'egg',  b:'veg',  n:'翡翠蛋卷',   p:15,cat:'st',after:['r1','r17']},
+  {id:'r21',a:'egg',  b:'sugar',n:'焦糖布丁塔', p:15,cat:'sw',after:['r17','r2']},
+  {id:'r22',a:'egg',  b:'tea',  n:'茶香蒸蛋',   p:16,cat:'dr',after:['r16']},
+  {id:'r23',a:'egg',  b:'ice',  n:'冰镇溏心蛋', p:13,cat:'st',after:['r4','r17']},
+  {id:'r24',a:'egg',  b:'fruit',n:'果香舒芙蕾', p:18,cat:'sw',after:['r17','r11']},
+  {id:'r25',a:'berry',b:'fruit',n:'双莓神经塔', p:17,cat:'sw',after:['r11']},
+  {id:'r26',a:'berry',b:'sugar',n:'浆果爆珠慕斯',p:19,cat:'sw',after:['r25','r21']},
+  {id:'r27',a:'berry',b:'ice',  n:'莓莓冷萃冰', p:14,cat:'dr',after:['r13']},
+  {id:'r28',a:'berry',b:'tea',  n:'莓果神经茶', p:18,cat:'dr',after:['r27','r16']},
 ];
 RECIPES.forEach(function(r){r.key=[r.a,r.b].sort().join('+')});
 function recById(id){return RECIPES.find(function(r){return r.id===id})}
+function rdAvail(r,unl){if(!r.after)return true;return r.after.every(function(p){return unl[p]})}
 const CAT_IC={st:'🍜 主食',sw:'🍡 甜品',dr:'🧋 饮品'};
 
 const CUSTS=[
@@ -539,6 +540,26 @@ const SPECIALS=[
   {id:'thief',   n:'摸兜客',  e:'🥷',cats:['st','dr'],pat:.9,tip:0,pay:1,steal:true,pen:0,w:2,dsc:'危险：上菜会被摸走零钱！'},
 ];
 function spById(id){return SPECIALS.find(function(s){return s.id===id})||null}
+
+/* ================= 常客好感（普通顾客接待 N 次解锁 buff） ================= */
+const VIP_LVL=[
+  {lvl:1,t:6, n:'熟客',  buff:'spawn+15%'},
+  {lvl:2,t:18,n:'常客',  buff:'tip+15%'},
+  {lvl:3,t:40,n:'铁粉',  buff:'pay+10%,pat+10%'},
+];
+function vipBuffMap(){
+  var b={};
+  CUSTS.forEach(function(c){
+    if(!G.vipMap)return;
+    var v=G.vipMap[c.id];if(!v)return;
+    var max=0;VIP_LVL.forEach(function(L){if(v.s>=L.t&&L.lvl>max)max=L.lvl});
+    if(max===1)b[c.id]={flow:1.15};
+    else if(max===2)b[c.id]={tip:1.15};
+    else if(max>=3)b[c.id]={tip:1.15,pay:1.1,pat:1.1};
+  });
+  return b;
+}
+function vipLvl(cid){if(!G.vipMap)return 0;var v=G.vipMap[cid];if(!v)return 0;var L=0;VIP_LVL.forEach(function(V){if(v.s>=V.t)L=V.lvl});return L}
 
 /* 抉择型随机事件（每天清晨概率触发，必须二选一） */
 const CHOICES=[
@@ -567,6 +588,61 @@ const CHOICES=[
     {t:'☕ 干了（-¥50，今晚烹饪 ×1.25）',need:50,fx:{money:-50,cmod:{cook:1.25}}},
     {t:'🙅 扛得住',fx:{}}]},
 ];
+
+/* ================= 每日挑战 ================= */
+const CHALLENGES=[
+  {id:'sell40',n:'流水线打工人',d:'今晚接待 40 位顾客',ic:'🏃',
+   check:function(N){return N.servedN>=40},rew:function(N){return{money:120+N.servedN*2,rep:3}}},
+  {id:'earn600',n:'今晚回本',d:'今晚营收 ≥ ¥600',ic:'💰',
+   check:function(N){return N.earn>=600},rew:function(N){return{money:Math.round(N.earn*.15),rep:2}}},
+  {id:'earn1500',n:'财大气粗',d:'今晚营收 ≥ ¥1500',ic:'💎',
+   check:function(N){return N.earn>=1500},rew:function(N){return{money:Math.round(N.earn*.12),rep:5,tp:1}}},
+  {id:'lost0',n:'服务之星',d:'今晚 0 气跑',ic:'⭐',
+   check:function(N){return N.lostN===0&&N.servedN>=10},rew:function(N){return{money:Math.round(N.earn*.1),rep:4}}},
+  {id:'tip150',n:'小费猎手',d:'今晚小费 ≥ ¥150',ic:'💸',
+   check:function(N){return (N.tipN||0)>=150},rew:function(N){return{money:Math.round((N.tipN||0)*.25),rep:2}}},
+  {id:'crit3', n:'暴击之夜',d:'今晚触发 3 次暴击',ic:'⚡',
+   check:function(N){return (N.critN||0)>=3},rew:function(N){return{money:80*(N.critN||0),rep:2}}},
+  {id:'spec3', n:'社交达人',d:'今晚接待 3 位特殊顾客',ic:'🎭',
+   check:function(N){return (N.specN||0)>=3},rew:function(N){return{money:100*(N.specN||0),rep:4}}},
+  {id:'beg1',  n:'爱心摊位',d:'今晚施舍 1 位流浪者',ic:'🥺',
+   check:function(N){return (N.begN||0)>=1},rew:function(N){return{money:30,rep:5}}},
+  {id:'dish5', n:'丰富菜单',d:'今晚用 5 道菜出餐',ic:'📋',
+   check:function(N){return (N.dishSet?N.dishSet.size:0)>=5},rew:function(N){return{money:80,rep:2}}},
+  {id:'nights5',n:'一周五夜',d:'今晚是连开的第 5 晚',ic:'🌙',
+   check:function(N){return G.day>=5},rew:function(N){return{money:200,rep:3,tp:1}}},
+];
+function rollChallenge(){
+  if(G.day<3){G.challenge=null;return}
+  // 按 day 递进解锁挑战池
+  var pool=CHALLENGES.filter(function(c){
+    if(c.id==='earn1500'||c.id==='crit3'||c.id==='dish5')return G.day>=7;
+    if(c.id==='nights5')return false; // 固定给第 5 天
+    return true;
+  });
+  if(G.day===5){var fixed=CHALLENGES.find(function(c){return c.id==='nights5'});if(fixed){G.challenge={id:fixed.id,done:false};return}}
+  G.challenge={id:choice(pool).id,done:false};
+}
+function challengeNow(){
+  return G.challenge?CHALLENGES.find(function(c){return c.id===G.challenge.id}):null;
+}
+function challengeCheck(N){
+  var c=challengeNow();if(!c)return null;
+  if(!G.challenge.done&&c.check(N)){
+    G.challenge.done=true;saveGame();
+    return c;
+  }
+  return null;
+}
+function challengeRew(c,N){
+  var R=c.rew(N);
+  if(R.money){G.money+=R.money;N.earn+=R.money;toast(c.ic+' 挑战完成！+¥'+fmt(R.money),'gold')}
+  if(R.rep){G.rep=Math.min(100,G.rep+R.rep);toast('声望 +'+R.rep,'gr')}
+  if(R.tp){G.tp=(G.tp||0)+R.tp;toast('天赋点 +'+R.tp,'cy')}
+  LIFE.chDone=(LIFE.chDone||0)+1;saveLife();
+  if(LIFE.chDone>=5)checkAch('ch5');
+  return R;
+}
 
 const TALENTS=[
   {id:'crit',  n:'暴击芯片', d:'15% 概率双倍收入（可叠加）',ic:'⚡'},
@@ -648,6 +724,9 @@ const ACHS=[
   {id:'brands3',n:'夜市帝国',  d:'开出 3 家分店',        ic:'🏙️', rew:{rep:50,money:1500,tal:3}},
   {id:'spec10',n:'贵人云集',  d:'累计接待 10 位特殊顾客',ic:'🎭', rew:{rep:10,money:100}},
   {id:'price1',n:'定价鬼才',  d:'把任意菜品定价到 150%', ic:'💲', rew:{money:50}},
+  {id:'rd10',  n:'研发达人',  d:'解锁 10 道可研发菜',    ic:'🧪', rew:{rep:15,money:150,tal:1}},
+  {id:'vip3',  n:'铁粉拥护',  d:'任一常客达到 Lv3（铁粉）', ic:'❤️', rew:{rep:20,money:300,tal:1}},
+  {id:'ch5',   n:'每日战士',  d:'完成 5 次每日挑战',       ic:'🎯', rew:{rep:15,money:200,tal:1}},
 ];
 
 /* ================= 排行榜 ================= */
@@ -694,7 +773,7 @@ function showLeaderboard(){
 const SAVE_KEY='cyberNightMarket_v1',LIFE_KEY='cyberNightMarket_life';
 let G=null,NIGHT=null,TAB='buy',RD1=null,RD2=null;
 let syncPending=null; // 同步冲突弹窗暂存的导入数据
-let LIFE={served:0,earned:0,brands:0,bestDay:0},ACH={};
+let LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0},ACH={};
 
 const DIFFS=[
   {id:'easy',  n:'😇 休闲', ic:'🌱', d:'起始 ¥500 · 租金减半 · 客流 +20%', money:500, rent:.5, flow:1.2, price:.8},
@@ -704,10 +783,12 @@ const DIFFS=[
 ];
 function diff(){return G&&G.difficulty?DIFFS.find(function(d){return d.id===G.difficulty})||DIFFS[1]:DIFFS[1]}
 function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]:diff();
+  var vip={};CUSTS.forEach(function(c){vip[c.id]={s:0,lvl:0}});
+  var baseUnl={};RECIPES.forEach(function(r){if(!r.after)baseUnl[r.id]=true});
   return{day:1,money:d.money,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},tp:0,
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0},over:null,
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
-  priceMod:{},cmod:null,choice:null}}
+  priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip}}
 
 /* ================= 存档 ================= */
 function saveGame(){try{if(G&&!G.over){G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
@@ -722,7 +803,8 @@ function loadLife(){
           earned:clamp(Math.round(+d.life.earned||0),0,1e12),
           brands:clamp(Math.round(+d.life.brands||0),0,9999),
           bestDay:clamp(Math.round(+d.life.bestDay||0),0,1e9),
-          specSeen:(d.life.specSeen&&typeof d.life.specSeen==='object')?d.life.specSeen:{}};
+          specSeen:(d.life.specSeen&&typeof d.life.specSeen==='object')?d.life.specSeen:{},
+          chDone:clamp(Math.round(+d.life.chDone||0),0,999)};
     ACH={};if(d.ach&&typeof d.ach==='object')ACHS.forEach(function(a){if(d.ach[a.id])ACH[a.id]=1});
   }catch(e){}
 }
@@ -769,6 +851,21 @@ function sanitizeSave(d){
     }
     g.cmod=Object.keys(cm2).length?cm2:null;
     g.choice=(d.choice&&typeof d.choice==='object'&&CHOICES.some(function(c){return c.id===d.choice.id}))?{id:String(d.choice.id)}:null;
+    g.challenge=(d.challenge&&typeof d.challenge==='object'&&CHALLENGES.some(function(c){return c.id===d.challenge.id}))
+      ?{id:String(d.challenge.id),done:!!d.challenge.done}:null;
+    var rt2={};
+    if(d.rdtree&&typeof d.rdtree==='object'){
+      RECIPES.forEach(function(r){if(!r.after)rt2[r.id]=true});
+      Object.keys(d.rdtree).forEach(function(k){if(recById(k)&&d.rdtree[k])rt2[k]=true});
+    }else{RECIPES.forEach(function(r){if(!r.after)rt2[r.id]=true})}
+    g.rdtree=rt2;
+    var vm2={};
+    CUSTS.forEach(function(c){
+      var s=clamp(Math.round(+((d.vipMap||{})[c.id]&&(d.vipMap[c.id].s)||0)),0,99999);
+      var L=0;VIP_LVL.forEach(function(V){if(s>=V.t)L=V.lvl});
+      vm2[c.id]={s:s,lvl:L};
+    });
+    g.vipMap=vm2;
     g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
     g.tp=clamp(Math.round(+d.tp||0),0,999);
     g.difficulty=DIFFS.some(function(x){return x.id===d.difficulty})?d.difficulty:'norm';
@@ -1077,6 +1174,24 @@ function showCareer(){
     '<div class="panel-tip" style="margin-top:12px">你的专属夜市生涯档案 · 本地存储，不上传任何数据</div>';
   showModal('<h3>📊 生涯数据</h3>'+h+'<div class="mops"><div class="btn mg" data-act="closeModal">关闭</div></div>',true);
 }
+function showVipPanel(){
+  var h='<div class="panel-tip">❤️ 常客好感：多服务同类型顾客会升级为常客，解锁特殊 buff。连锁重开后好感保留！</div>'+
+    '<div class="vip-list">'+CUSTS.map(function(c){
+      var v=(G.vipMap&&G.vipMap[c.id])||{s:0,lvl:0};
+      var lvl=vipLvl(c.id);
+      var next=VIP_LVL.find(function(L){return L.t>v.s});
+      var pct=next?Math.round(v.s/next.t*100):100;
+      var buffTxt='';
+      if(lvl>=3)buffTxt='<b style="color:var(--gr)">铁粉 Lv3 · 售价 +10% · 小费 +15% · 耐心 +10%</b>';
+      else if(lvl>=2)buffTxt='<b style="color:var(--cy)">常客 Lv2 · 小费 +15%</b>';
+      else if(lvl>=1)buffTxt='<b style="color:var(--yl)">熟客 Lv1 · 到店概率 +15%</b>';
+      else buffTxt='未解锁（需接待 6 位升级）';
+      return '<div class="vip-row"><span>'+c.e+' <b>'+c.n+'</b></span>'+
+        '<span>接待 '+v.s+' 次 · '+buffTxt+'</span>'+
+        (next?'<span style="color:var(--dim);font-size:11px">下次 Lv'+next.lvl+' 还需 '+next.t+' 次</span>':'<span style="color:var(--gr)">已满级 ✓</span>')+'</div>';
+    }).join('')+'</div>';
+  showModal('<h3>❤️ 常客好感</h3>'+h+'<div class="mops"><div class="btn mg" data-act="closeModal">关闭</div></div>',true);
+}
 
 /* ================= 音效设置面板 ================= */
 function setBgmVol(v){
@@ -1236,7 +1351,7 @@ function guidePrev(){if(guidePage>0){guidePage--;SFX.click();renderGuide()}}
 
 /* ================= 开局 / 继续 ================= */
 function newGame(){
-  G=freshG();rollWeather();rollEvent();rollQuest();
+  G=freshG();rollWeather();rollEvent();rollQuest();rollChallenge();
   saveGame();
   SFX.click();
   if(coachSeen())startFirst(); // 老玩家跳过图文引导直接开局
@@ -1320,7 +1435,7 @@ function askReset(){
 function resetGo(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LIFE_KEY)}catch(e){}
   SYNC.clearMirror();
-  G=null;LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{}};ACH={};
+  G=null;LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0};ACH={};
   closeModal();refreshMenuContinue();renderMenuLife();
   toast('🗑️ 存档已清除','rd');
 }
@@ -1424,6 +1539,7 @@ function renderDay(){
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
+    (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
     (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
   $('#tabs').innerHTML=TABS.map(function(t){
@@ -1466,13 +1582,17 @@ function panelRd(){
     return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+'</div>'}).join('');
   var picked=RD1?ingN(RD1)+(RD2?' + '+ingN(RD2):''):'（点选两种食材）';
   var known=RECIPES.filter(function(r){return G.dishes.indexOf(r.id)>=0});
+  var avail=RECIPES.filter(function(r){return rdAvail(r,G.rdtree)&&G.dishes.indexOf(r.id)<0});
+  var locked=RECIPES.filter(function(r){return !rdAvail(r,G.rdtree)});
   var h='<div class="rd-chips">'+chips+'</div>'+
-    '<div class="rd-status">已选：<b>'+esc(picked)+'</b><br>已解锁菜品：'+known.length+' / '+RECIPES.length+(G.freeRd?' · <b style="color:var(--gr)">本次免费</b>':'')+'</div>'+
+    '<div class="rd-status">已选：<b>'+esc(picked)+'</b><br>'+
+    '📊 菜品进度：已掌握 <b style="color:var(--gr)">'+known.length+'</b> · 可研发 <b style="color:var(--yl)">'+avail.length+'</b> · 🔒 未解锁 <b style="color:var(--rd)">'+locked.length+'</b>'+
+    (G.freeRd?' · <b style="color:var(--gr)">本次免费</b>':'')+'</div>'+
     '<div class="btn yl" data-act="rdGo"'+((!RD1||!RD2)?' disabled':'')+'>🧪 开始研发</div>';
   if(known.length){
     h+='<div class="panel-tip">已掌握：'+known.map(function(r){return r.n}).join('、')+'</div>';
   }
-  h+='<div class="panel-tip">'+(INGS.length*(INGS.length-1)/2)+' 种两两组合中藏着 '+RECIPES.length+' 道真菜，其余是黑暗料理…</div>';
+  h+='<div class="panel-tip">🌳 研发树提示：部分菜需要先解锁「母菜」才能研发（如 甜酱华夫 → 抹茶可丽）。连锁重开后已解锁的菜会保留。</div>';
   return h;
 }
 function panelMenu(){
@@ -1593,10 +1713,15 @@ function rdGo(){
   if(hit){
     if(G.dishes.indexOf(hit.id)>=0){
       toast('已掌握：'+hit.n,'gr');SFX.click();
+    }else if(!rdAvail(hit,G.rdtree)){
+      var need=(hit.after||[]).map(function(p){var pr=recById(p);return pr?pr.n:p}).join('、');
+      toast('🔒 研发锁：先解锁 '+need,'rd');SFX.bad();
     }else{
-      G.dishes.push(hit.id);
+      G.dishes.push(hit.id);G.rdtree[hit.id]=true;
       SFX.bigcoin();
       if(G.dishes.length>=RECIPES.length)checkAch('dish17');
+      var rdUnlock=Object.keys(G.rdtree||{}).filter(function(k){return G.rdtree[k]}).length;
+      if(rdUnlock>=10)checkAch('rd10');
 
       showModal('<h3>🧪 研发成功！</h3><div class="mtxt"><p style="text-align:center;font-size:30px;margin:10px 0">🍜</p>'+
         '<p style="text-align:center"><b style="font-size:16px;color:var(--yl)">'+hit.n+'</b></p>'+
@@ -1662,8 +1787,13 @@ function doPrestigeGo(){
   LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');
   var p=(G.prestiges||0)+1;
   var oldDiff=G.difficulty;
+  var keepRt=JSON.parse(JSON.stringify(G.rdtree||{}));
+  var keepVip=JSON.parse(JSON.stringify(G.vipMap||{}));
   G=freshG(oldDiff);G.prestiges=p;G.money=300+300*p;
-  rollWeather();rollEvent();rollQuest();
+  // 配方研发树 + 常客好感跨分店保留（持久成长）
+  Object.keys(keepRt).forEach(function(k){G.rdtree[k]=true});
+  CUSTS.forEach(function(c){if(keepVip[c.id]&&keepVip[c.id].s){G.vipMap[c.id].s=keepVip[c.id].s;G.vipMap[c.id].lvl=vipLvl(c.id)}});
+  rollWeather();rollEvent();rollQuest();rollChallenge();
   saveGame();closeModal();
   toast('🏪 分店开业！收入永久 +'+(p*30)+'%','gold');
   checkLogin();
@@ -1709,7 +1839,8 @@ function startNight(){
     }
   }
   NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
-    cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null};
+    cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null,
+    critN:0,tipN:0,specN:0,begN:0,dishSet:new Set()};
   saveGame();
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
@@ -1726,11 +1857,22 @@ function spawnCust(){
     for(var i=0;i<SPECIALS.length;i++){r-=SPECIALS[i].w;if(r<=0){sp=SPECIALS[i];break}}
     cust=sp;
   }
-  if(!cust)cust=choice(CUSTS);
+  if(!cust){
+    // VIP L1 及以上顾客 flow×1.15 加权（spawnCust 层面）
+    var bm=vipBuffMap(),tw=0;
+    CUSTS.forEach(function(c){tw+=(bm[c.id]&&bm[c.id].flow?1.15:1)});
+    var r=Math.random()*tw;
+    for(var ci=0;ci<CUSTS.length;ci++){
+      r-=(bm[CUSTS[ci].id]&&bm[CUSTS[ci].id].flow?1.15:1);
+      if(r<=0){cust=CUSTS[ci];break}
+    }
+    if(!cust)cust=CUSTS[0];
+  }
+  var bm2=vipBuffMap();var vbuffPat=(bm2[cust.id]&&bm2[cust.id].pat)||1;
   var dish=pickDish(cust);if(!dish)return;
   NIGHT.cid++;
   var CM=G.cmod||{};
-  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(ev()?(ev().pat||1):1)*(CM.pat||1);
+  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(vbuffPat||1)*(ev()?(ev().pat||1):1)*(CM.pat||1);
   NIGHT.queue.push({cid:NIGHT.cid,type:cust.id,n:cust.n,e:cust.e,pay:cust.pay,tip:cust.tip,
     noRep:!!cust.noRep,sp:sp?sp.id:null,spD:sp?sp.dsc:'',
     dish:dish.id,dishN:dish.n,price:dishPrice(dish),cat:dish.cat,pat:patMax,patMax:patMax});
@@ -1778,9 +1920,17 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   NIGHT.queue=NIGHT.queue.filter(function(c){return c.cid!==k.cid});
   var cust=CUSTS.find(function(c){return c.id===k.type})||SPECIALS.find(function(c){return c.id===k.type})||CUSTS[0];
   var E=ev(),CM=G.cmod||{};
-  if(k.sp&&G.total)G.total.spec=(G.total.spec||0)+1;
+  if(k.sp&&G.total){G.total.spec=(G.total.spec||0)+1;NIGHT.specN++}
+  if(NIGHT.dishSet)NIGHT.dishSet.add(k.dish);
+  // VIP 累计（普通顾客）
+  if(!k.sp&&cust){
+    if(!G.vipMap[k.type])G.vipMap[k.type]={s:0,lvl:0};
+    var oldLvl=G.vipMap[k.type].lvl;
+    G.vipMap[k.type].s++;G.vipMap[k.type].lvl=vipLvl(k.type);
+    if(oldLvl<3&&G.vipMap[k.type].lvl>=3)checkAch('vip3');
+  }
   if(cust.free){
-    NIGHT.servedN++;NIGHT.sellN++;
+    NIGHT.servedN++;NIGHT.sellN++;NIGHT.begN++;
     G.mastery[k.dish]=(G.mastery[k.dish]||0)+1;
     var rg=3*(1+.2*(G.ups.spk||0));if(E&&E.rep2)rg*=2;if(CM.rep2)rg*=2;
     G.rep=Math.min(100,G.rep+rg);
@@ -1799,15 +1949,17 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
     return;
   }
   var aura=(NIGHT.queue.some(function(c){return c.type==='streamer'})||NIGHT.cooking.some(function(k2){return k2.type==='streamer'}))?2:1;
-  var base=k.price*wxMult(k.cat)*cust.pay*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*(CM.price||1)*mastMult(k.dish)*staffPriceMult()*ltdEarn()*diff().price;
+  var vbuff=vipBuffMap()[k.type]||{};
+  var base=k.price*wxMult(k.cat)*cust.pay*(vbuff.pay||1)*(1+.3*(G.prestiges||0))*(E?(E.price||1):1)*(CM.price||1)*mastMult(k.dish)*staffPriceMult()*ltdEarn()*diff().price;
   var crit=Math.random()<Math.min(.45,.15*(G.talents.crit||0));
-  if(crit)base*=2;
+  if(crit){base*=2;NIGHT.critN++}
   var ap=avgPriceMod();
-  var tip=base*.12*cust.tip*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura;
+  var tip=base*.12*cust.tip*(vbuff.tip||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura;
   if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
   var gain=Math.round(base+tip);
   G.money+=gain;NIGHT.earn+=gain;
+  NIGHT.tipN+=Math.round(tip);
   NIGHT.servedN++;NIGHT.sellN++;
   G.mastery[k.dish]=(G.mastery[k.dish]||0)+1;
   var repGain=.4*(1+.2*(G.ups.spk||0));
@@ -2043,15 +2195,25 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   if((G.prestiges||0)>=3)checkAch('brands3');
   if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
   G.total.served+=NIGHT.servedN;G.total.earned+=NIGHT.earn;
+  // 挑战完成度检测
+  var ch=challengeCheck(NIGHT);var chTxt='';
+  if(ch){var R=challengeRew(ch,NIGHT);chTxt='<div class="settle-line"><span>🎯 挑战</span><b style="color:var(--gr)">✓ 完成 · +¥'+fmt(R.money||0)+(R.rep?' · 声望 +'+R.rep:'')+(R.tp?' · 天赋点 +'+R.tp:'')+'</b></div>'}
+  else if(G.challenge&&!G.challenge.done){chTxt='<div class="settle-line"><span>🎯 挑战</span><b style="color:var(--rd)">未完成</b></div>'}
+  // 常客面板入口
+  var vipTxt='';var vipBest=0;CUSTS.forEach(function(c){if(G.vipMap&&G.vipMap[c.id]){var l=vipLvl(c.id);if(l>vipBest)vipBest=l}});
+  if(vipBest>0){vipTxt='<div class="settle-line"><span>❤️ 常客最高等级</span><b>Lv.'+vipBest+'</b></div>'}
   saveLife();saveGame();
   $('#settleBody').innerHTML=
     '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
     '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
+    chTxt+vipTxt+
     '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
     (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
-  $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div><div class="btn big" data-act="shareCard" style="margin-top:8px">📸 生成分享卡片</div><div class="btn big" data-act="leaderboard" style="margin-top:8px">🏆 查看排行榜</div>';
+  $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>'+
+    (vipBest>0?'<div class="btn big" data-act="vipPanel" style="margin-top:8px">❤️ 查看常客好感</div>':'')+
+    '<div class="btn big" data-act="shareCard" style="margin-top:8px">📸 生成分享卡片</div><div class="btn big" data-act="leaderboard" style="margin-top:8px">🏆 查看排行榜</div>';
   showScreen('scr-settle');
 }
 function offerTalents(){
@@ -2088,7 +2250,7 @@ function nextDay(){
   saveGame();
   renderDay();
   if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid),'rd');
-  rollChoice();
+  rollChoice();rollChallenge();
 }
 
 /* ================= 结局 ================= */
@@ -2161,12 +2323,13 @@ document.addEventListener('click',function(e){
     case 'hire':hireStaff();break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
-    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();saveGame();closeModal();renderDay();checkLogin();break;
+    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();rollChallenge();saveGame();closeModal();renderDay();checkLogin();break;
     case 'startGo':chooseDiff();break;
     case 'shareCard':shareCard();break;
     case 'saveCard':saveCard();break;
     case 'copyCard':copyCard();break;
     case 'leaderboard':showLeaderboard();break;
+    case 'vipPanel':SFX.click();showVipPanel();break;
     case 'prestige':askPrestige();break;
     case 'prestigeGo':doPrestigeGo();break;
     case 'startNight':startNight();break;
