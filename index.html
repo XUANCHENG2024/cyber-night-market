@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.13.0 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.13.1 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -561,14 +561,14 @@ function vipBuffMap(){
 }
 function vipLvl(cid){if(!G.vipMap)return 0;var v=G.vipMap[cid];if(!v)return 0;var L=0;VIP_LVL.forEach(function(V){if(v.s>=V.t)L=V.lvl});return L}
 
-/* ================= v0.13.0 经营场地（venue）+ 城市（city）+ 地图 ================= */
+/* ================= v0.13.1 经营场地（venue）+ 城市（city）+ 地图 ================= */
 /* 场地档次（tier）— 5 档进阶：租金/客流/客单价/菜单上限 全数值矩阵 */
 const VENUE_TIERS=[
-  {id:'stall',   n:'🏕️ 夜市地摊', rent:0,   flow:1.0, payK:1.00, menuMax:8,  unlock:null},
-  {id:'street',  n:'🛍️ 步行街铺', rent:50,  flow:1.2, payK:1.10, menuMax:10, unlock:{money:2000}},
-  {id:'mall',    n:'🏬 商场档口', rent:150, flow:1.5, payK:1.30, menuMax:12, unlock:{money:8000,rep:60}},
-  {id:'scenic',  n:'🏞️ 景区旗舰', rent:400, flow:2.0, payK:1.60, menuMax:14, unlock:{money:25000,rep:80,prestiges:1}},
-  {id:'landmark',n:'🗼 城市地标', rent:800, flow:2.5, payK:2.00, menuMax:16, unlock:{money:80000,rep:95,prestiges:3}},
+  {id:'stall',   n:'🏕️ 夜市地摊', rent:0,   flow:1.0, payK:1.00, menuMax:8},
+  {id:'street',  n:'🛍️ 步行街铺', rent:50,  flow:1.2, payK:1.10, menuMax:10},
+  {id:'mall',    n:'🏬 商场档口', rent:150, flow:1.5, payK:1.30, menuMax:12},
+  {id:'scenic',  n:'🏞️ 景区旗舰', rent:400, flow:2.0, payK:1.60, menuMax:14},
+  {id:'landmark',n:'🗼 城市地标', rent:800, flow:2.5, payK:2.00, menuMax:16},
 ];
 /* 同档变体（variant）— 同档内免费切换，微调客流结构 */
 const VENUE_VARIANTS={
@@ -597,16 +597,16 @@ const VENUE_VARIANTS={
 };
 /* 10 个中国大陆城市（SVG 坐标基于 600×400 viewBox） */
 const CITIES=[
-  {id:'chengdu',  n:'成都',   x:280,y:250, unlock:null,                                buff:{catK:{sw:1.2}},     dsc:'甜品类热销 +20%'},
-  {id:'chongqing',n:'重庆',   x:320,y:265, unlock:{money:1500},                        buff:{catK:{st:1.2}},     dsc:'主食类热销 +20%'},
-  {id:'xian',     n:'西安',   x:360,y:200, unlock:{money:2500},                        buff:{rep:1.3},           dsc:'声望获取 ×1.3'},
-  {id:'guangzhou',n:'广州',   x:390,y:330, unlock:{money:4000},                        buff:{tipK:1.25},         dsc:'小费 +25%'},
-  {id:'wuhan',    n:'武汉',   x:430,y:245, unlock:{money:5000},                        buff:{flow:1.15},         dsc:'客流 +15%'},
-  {id:'changsha', n:'长沙',   x:400,y:280, unlock:{money:12000,prestiges:1},           buff:{critK:0.10},        dsc:'暴击率 +10%（加法）'},
-  {id:'hangzhou', n:'杭州',   x:480,y:270, unlock:{money:10000,rep:55},                buff:{catK:{dr:1.3}},     dsc:'饮品类热销 +30%'},
-  {id:'shanghai', n:'上海',   x:510,y:250, unlock:{money:8000,rep:50},                 buff:{flow:1.2,payK:1.1}, dsc:'客流 +20% · 溢价 +10%'},
-  {id:'beijing',  n:'北京',   x:450,y:135, unlock:{money:15000,rep:70},                buff:{rep:1.5},           dsc:'声望获取 ×1.5'},
-  {id:'harbin',   n:'哈尔滨', x:520,y:60,  unlock:{money:30000,rep:85,prestiges:2},    buff:{allK:1.15},         dsc:'全收益 ×1.15'},
+  {id:'chengdu',  n:'成都',   x:280,y:250, buff:{catK:{sw:1.2}},     dsc:'甜品类热销 +20%'},
+  {id:'chongqing',n:'重庆',   x:320,y:265, buff:{catK:{st:1.2}},     dsc:'主食类热销 +20%'},
+  {id:'xian',     n:'西安',   x:360,y:200, buff:{rep:1.3},           dsc:'声望获取 ×1.3'},
+  {id:'guangzhou',n:'广州',   x:390,y:330, buff:{tipK:1.25},         dsc:'小费 +25%'},
+  {id:'wuhan',    n:'武汉',   x:430,y:245, buff:{flow:1.15},         dsc:'客流 +15%'},
+  {id:'changsha', n:'长沙',   x:400,y:280, buff:{critK:0.10},        dsc:'暴击率 +10%（加法）'},
+  {id:'hangzhou', n:'杭州',   x:480,y:270, buff:{catK:{dr:1.3}},     dsc:'饮品类热销 +30%'},
+  {id:'shanghai', n:'上海',   x:510,y:250, buff:{flow:1.2,payK:1.1}, dsc:'客流 +20% · 溢价 +10%'},
+  {id:'beijing',  n:'北京',   x:450,y:135, buff:{rep:1.5},           dsc:'声望获取 ×1.5'},
+  {id:'harbin',   n:'哈尔滨', x:520,y:60,  buff:{allK:1.15},         dsc:'全收益 ×1.15'},
 ];
 
 /* —— 城市/场地修饰器函数 —— */
@@ -622,43 +622,13 @@ function venueBuff(){var b=curVenueVar().buff;return b||{}}
 function venueKey(t,v){return t+':'+v}
 function isCityUnlocked(cid){return (LIFE.citiesUnlocked||[]).indexOf(cid)>=0}
 function isVenueOwned(t,v){return (LIFE.venuesOwned||[]).indexOf(venueKey(t,v))>=0}
-function canUnlockCity(c){
-  var u=c.unlock;if(!u)return{ok:true};
-  if(u.money&&G.money<u.money)return{ok:false,need:'💰 ¥'+fmt(u.money)};
-  if(u.rep&&G.rep<u.rep)return{ok:false,need:'📟 声望 '+u.rep};
-  if(u.prestiges&&(G.prestiges||0)<u.prestiges)return{ok:false,need:'🏪 连锁 ×'+u.prestiges};
-  return{ok:true};
-}
-function canUnlockTier(t){
-  var u=t.unlock;if(!u)return{ok:true};
-  if(u.money&&G.money<u.money)return{ok:false,need:'💰 ¥'+fmt(u.money)};
-  if(u.rep&&G.rep<u.rep)return{ok:false,need:'📟 声望 '+u.rep};
-  if(u.prestiges&&(G.prestiges||0)<u.prestiges)return{ok:false,need:'🏪 连锁 ×'+u.prestiges};
-  return{ok:true};
-}
-function unlockHint(u){
-  if(!u)return'免费';
-  var parts=[];
-  if(u.money)parts.push('💰 ¥'+fmt(u.money));
-  if(u.rep)parts.push('📟 声望 '+u.rep);
-  if(u.prestiges)parts.push('🏪 连锁 ×'+u.prestiges);
-  return parts.join(' · ');
-}
+/* 自由选位：所有城市/场地随时可切换，唯一的经营成本是场地日租 */
 function doMigrate(cid){
   var c=CITIES.find(function(x){return x.id===cid});if(!c)return;
   if(G.city===cid){toast('已经在这座城市了','yl');return}
-  if(isCityUnlocked(cid)){
-    G.city=cid;saveGame();renderDay();closeModal();
-    toast('🚚 迁都已就绪！今晚开始在 '+c.n+' 经营','gr');SFX.upgrade();
-    return;
-  }
-  var chk=canUnlockCity(c);
-  if(!chk.ok){toast('🔒 解锁条件不足：'+chk.need,'rd');SFX.bad();return}
-  // 扣钱解锁（money 类型）
-  if(c.unlock&&c.unlock.money)G.money-=c.unlock.money;
-  LIFE.citiesUnlocked.push(cid);saveLife();
+  if(!isCityUnlocked(cid)){LIFE.citiesUnlocked.push(cid);saveLife()}
   G.city=cid;saveGame();renderDay();closeModal();
-  toast('🎉 新城市「'+c.n+'」解锁！已自动迁都','gold');SFX.bigcoin();
+  toast('🚚 已迁都到「'+c.n+'」，今晚开始营业','gr');SFX.upgrade();
   if(LIFE.citiesUnlocked.length>=5)checkAch('city5');
   if(LIFE.citiesUnlocked.length>=CITIES.length)checkAch('cityAll');
 }
@@ -666,21 +636,10 @@ function doSwitchVenue(tierId,variantId){
   var t=VENUE_TIERS.find(function(x){return x.id===tierId});if(!t)return;
   var arr=VENUE_VARIANTS[tierId]||[];
   var v=arr.find(function(x){return x.id===variantId})||arr[0];if(!v)return;
-  var key=venueKey(tierId,v.id);
   if(G.venue.tier===tierId&&G.venue.variant===v.id){toast('已经在这个位置了','yl');return}
-  if(isVenueOwned(tierId,v.id)){
-    G.venue={tier:tierId,variant:v.id};saveGame();renderDay();closeModal();
-    toast('🏪 已搬到 '+t.n+'（'+v.n+'）','gr');SFX.upgrade();
-    return;
-  }
-  var chk=canUnlockTier(t);
-  if(!chk.ok){toast('🔒 解锁条件不足：'+chk.need,'rd');SFX.bad();return}
-  // 扣钱（一次性购入费 = 该档 unlock.money，免费档则 0）
-  var cost=(t.unlock&&t.unlock.money)||0;
-  if(cost>0){if(G.money<cost){toast('💰 资金不足 ¥'+fmt(cost),'rd');SFX.bad();return}G.money-=cost}
-  LIFE.venuesOwned.push(key);saveLife();
+  if(!isVenueOwned(tierId,v.id)){LIFE.venuesOwned.push(venueKey(tierId,v.id));saveLife()}
   G.venue={tier:tierId,variant:v.id};saveGame();renderDay();closeModal();
-  toast('🎊 新店址「'+t.n+'（'+v.n+'）」已购入'+(cost?'，花费 ¥'+fmt(cost):''),'gold');SFX.bigcoin();
+  toast('🏪 已搬到「'+t.n+'（'+v.n+'）」','gr');SFX.upgrade();
   if(tierId==='landmark')checkAch('venueMax');
 }
 
@@ -1017,10 +976,8 @@ function sanitizeSave(d){
     g.difficulty=DIFFS.some(function(x){return x.id===d.difficulty})?d.difficulty:'norm';
     if(g.skinsOwned.indexOf('default')<0)g.skinsOwned.push('default');
     if(g.skinsOwned.indexOf(g.skin)<0)g.skin='default';
-    /* v0.13.0 city/venue 白名单 */
+    /* v0.13.1 city/venue 白名单：自由选位，只校验 id/变体合法 */
     g.city=(typeof d.city==='string'&&CITIES.some(function(c){return c.id===d.city}))?d.city:'chengdu';
-    /* city 必须在已解锁列表里，否则回退成都（防篡改） */
-    if((LIFE.citiesUnlocked||['chengdu']).indexOf(g.city)<0)g.city='chengdu';
     (function(){
       var ok=false;
       if(d.venue&&typeof d.venue==='object'){
@@ -1028,10 +985,6 @@ function sanitizeSave(d){
         if(VENUE_TIERS.some(function(t){return t.id===tid})){
           var arr=VENUE_VARIANTS[tid]||[];
           if(arr.some(function(v){return v.id===vid}))ok=true;
-          if(ok){
-            /* venue 必须已购入，否则回退默认 */
-            if((LIFE.venuesOwned||['stall:main']).indexOf(tid+':'+vid)<0)ok=false;
-          }
           if(ok){g.venue={tier:tid,variant:vid};return}
         }
       }
@@ -1391,7 +1344,7 @@ const COACH_STEPS=[
   {sel:'[data-act="tab"][data-id="buy"]',text:'① <b>进货</b>：买食材。没食材做不了菜，看天气囤货——雨天主食好卖，热浪天饮品抢手。'},
   {sel:'[data-act="tab"][data-id="rd"]',text:'② <b>研发</b>：点选两种食材碰撞新配方。首次研发全免费，失败也不花钱，大胆试！'},
   {sel:'[data-act="tab"][data-id="menu"]',text:'③ <b>菜单</b>：研发出的菜要在这里「上架」，顾客才会点单（最多 8 道）。'},
-  {sel:'[data-act="tab"][data-id="map"]',text:'🗺️ <b>经营地图</b>：赚到钱后可迁都去上海/北京（各城市有独特 buff），还能升级场地（地摊→步行街→商场→景区→地标）。'},
+  {sel:'[data-act="tab"][data-id="map"]',text:'🗺️ <b>经营地图</b>：白天点顶部「🗺️ 选择经营位置」或这个标签页。10 座城市、5 档场地（地摊→步行街→商场→景区→地标）随便挑，点击即切换，只按日租扣费。'},
   {sel:'[data-act="startNight"]',text:'④ <b>开摊营业</b>：点击排队顾客接单做菜，做完自动收钱。祝你今晚大卖！'},
 ];
 let COACH={i:0,on:false};
@@ -1692,7 +1645,7 @@ function checkAch(id){
 }
 
 /* ================= 白天渲染 ================= */
-const TABS=[['buy','🛒 进货'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备'],['map','🗺️ 地图']];
+const TABS=[['buy','🛒 进货'],['map','🗺️ 地图'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
 function renderDay(){
   applySkin();
   showScreen('scr-day');
@@ -1705,7 +1658,8 @@ function renderDay(){
   var CC=curCity(),VT=curVenueTier(),VV=curVenueVar();
   $('#dayStatus').innerHTML=
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
-    '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span></div>'+
+    '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span>'+
+      '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div></div>'+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
     (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
@@ -1853,7 +1807,7 @@ function panelUps(){  var h=UPS.map(function(u){
       '<div class="skin-b">'+(cur?'使用中':owned?'点击换装':'¥'+fmt(s.cost))+'</div></div>'}).join('')+'</div>';
   return h;
 }
-/* ================= v0.13.0 经营地图面板 ================= */
+/* ================= v0.13.1 经营地图面板 ================= */
 function panelMap(){
   var CC=curCity(),VT=curVenueTier(),VV=curVenueVar();
   /* SVG 中国简化轮廓（640×400 viewBox，抽象为多边形） */
@@ -1863,58 +1817,53 @@ function panelMap(){
     /* 简化中国轮廓（粗略） */
     '<path d="M 80,80 L 200,50 L 320,40 L 420,55 L 540,80 L 600,130 L 590,200 L 560,260 L 510,310 L 430,340 L 340,360 L 250,355 L 160,330 L 100,280 L 70,200 Z" '+
     'fill="#0e1f33" stroke="#1a3a5a" stroke-width="1.5" opacity=".7"/>';
-  /* 城市标记 */
+  /* 城市标记：点击即迁都，全部可选 */
   CITIES.forEach(function(c){
-    var unlocked=isCityUnlocked(c.id),isCur=CC.id===c.id;
-    var col=isCur?'#ffd700':(unlocked?'#00ffcc':'#3a4a5a');
-    var op=isCur?1:(unlocked?0.9:0.4);
-    /* 当前城市脉冲光圈 */
+    var visited=isCityUnlocked(c.id),isCur=CC.id===c.id;
+    var col=isCur?'#ffd700':'#00ffcc';
+    var op=isCur?1:(visited?0.95:0.7);
     if(isCur){
       svg+='<circle cx="'+c.x+'" cy="'+c.y+'" r="18" fill="url(#pulse)"><animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite"/></circle>';
     }
-    svg+='<g data-act="cityPick" data-id="'+c.id+'" style="cursor:pointer" opacity="'+op+'">'+
+    svg+='<g data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer" opacity="'+op+'">'+
       '<circle cx="'+c.x+'" cy="'+c.y+'" r="'+(isCur?9:6)+'" fill="'+col+'" stroke="'+(isCur?'#fff':'#0a1420')+'" stroke-width="1.5"/>'+
-      '<text x="'+(c.x)+'" y="'+(c.y-14)+'" text-anchor="middle" fill="'+(isCur?'#ffd700':(unlocked?'#00ffcc':'#6a7a8a'))+'" font-size="'+(isCur?13:11)+'" font-weight="'+(isCur?'bold':'normal')+'">'+c.n+(unlocked?'':'🔒')+'</text>'+
+      '<text x="'+(c.x)+'" y="'+(c.y-14)+'" text-anchor="middle" fill="'+(isCur?'#ffd700':'#00ffcc')+'" font-size="'+(isCur?13:11)+'" font-weight="'+(isCur?'bold':'normal')+'">'+c.n+'</text>'+
       '</g>';
   });
   svg+='</svg>';
 
   /* 当前状态卡 */
-  var curInfo='<div class="panel-tip" style="margin-top:10px">📍 当前：<b style="color:var(--yl)">'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+'<br><span style="color:var(--cy)">'+CC.dsc+'</span> · <span style="color:var(--dim)">'+VV.dsc+'</span></div>';
+  var curInfo='<div class="panel-tip" style="margin-top:10px">📍 当前：<b style="color:var(--yl)">'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+'<br><span style="color:var(--cy)">'+CC.dsc+'</span> · <span style="color:var(--dim)">'+VV.dsc+'</span><br><span style="color:var(--gr);font-size:12px">✓ 所有城市/场地可自由切换，仅按日租扣费</span></div>';
 
-  /* 城市列表（点击展开详情） */
-  var cityList='<div class="panel-tip" style="margin-top:14px">🏙️ 城市列表（'+LIFE.citiesUnlocked.length+'/'+CITIES.length+' 已解锁）</div>'+
+  /* 城市列表（点击直接迁都） */
+  var cityList='<div class="panel-tip" style="margin-top:14px">🏙️ 城市列表（10 座可选 · 已到访 '+LIFE.citiesUnlocked.length+'）</div>'+
     '<div class="vip-list">'+CITIES.map(function(c){
-      var unlocked=isCityUnlocked(c.id),isCur=CC.id===c.id;
-      var chk=canUnlockCity(c);
+      var visited=isCityUnlocked(c.id),isCur=CC.id===c.id;
       var stat=isCur?'<b style="color:var(--yl)">📍 当前</b>':
-                unlocked?'<span style="color:var(--gr)">✓ 已解锁</span>':
-                chk.ok?'<span style="color:var(--cy)">可解锁</span>':
-                '<span style="color:var(--rd)">🔒 '+chk.need+'</span>';
-      return '<div class="vip-row" data-act="cityPick" data-id="'+c.id+'" style="cursor:pointer">'+
+                visited?'<span style="color:var(--gr)">✓ 已到访</span>':
+                '<span style="color:var(--cy)">点击前往</span>';
+      return '<div class="vip-row" data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer">'+
         '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b></span>'+
         '<span style="font-size:11px;color:var(--dim)">'+c.dsc+'</span>'+
         '<span style="font-size:11px">'+stat+'</span></div>';
     }).join('')+'</div>';
 
-  /* 场地矩阵（5 档 × N 变体） */
-  var venueList='<div class="panel-tip" style="margin-top:14px">🏪 经营场地（同档内免费切换，跨档需购入）</div>'+
+  /* 场地矩阵（5 档 × N 变体，点击直接搬迁） */
+  var venueList='<div class="panel-tip" style="margin-top:14px">🏪 经营场地（自由切换 · 日租是唯一成本）</div>'+
     VENUE_TIERS.map(function(t){
       var arr=VENUE_VARIANTS[t.id]||[];
       var tOwned=arr.some(function(v){return isVenueOwned(t.id,v.id)});
-      var chkT=canUnlockTier(t);
-      var head='<div style="margin-top:8px;padding:6px 10px;background:rgba(0,255,204,.05);border-left:3px solid '+(tOwned?'var(--gr)':(chkT.ok?'var(--cy)':'var(--rd)'))+';border-radius:4px">'+
+      var tCur=G.venue.tier===t.id;
+      var head='<div style="margin-top:8px;padding:6px 10px;background:rgba(0,255,204,.05);border-left:3px solid '+(tCur?'var(--yl)':(tOwned?'var(--gr)':'var(--cy)'))+';border-radius:4px">'+
         '<b>'+t.n+'</b> <span style="color:var(--dim);font-size:11px">日租 ¥'+fmt(Math.round(t.rent*(diff().rent||1)))+' · 客流 ×'+t.flow+' · 客单 ×'+t.payK+' · 菜单上限 '+t.menuMax+'</span>'+
-        (t.unlock&&!tOwned?'<div style="font-size:11px;color:var(--rd);margin-top:2px">🔒 购入：'+unlockHint(t.unlock)+'</div>':'')+
         '</div>';
       var variants='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-top:6px">'+
         arr.map(function(v){
-          var owned=isVenueOwned(t.id,v.id);
           var isCurV=G.venue.tier===t.id&&G.venue.variant===v.id;
-          return '<div class="skin-card'+(isCurV?' cur':'')+'" data-act="venuePick" data-id="'+t.id+':'+v.id+'" style="padding:8px;opacity:'+(owned?1:(chkT.ok?0.7:0.4))+'">'+
+          return '<div class="skin-card'+(isCurV?' cur':'')+'" data-act="venueGo" data-id="'+t.id+':'+v.id+'" style="padding:8px">'+
             '<div style="font-size:12px;font-weight:bold">'+(isCurV?'📍':'')+v.n+'</div>'+
             '<div style="font-size:11px;color:var(--dim);margin-top:2px">'+v.dsc+'</div>'+
-            '<div style="font-size:11px;margin-top:4px;color:'+(isCurV?'var(--yl)':(owned?'var(--gr)':'var(--rd)'))+'">'+(isCurV?'当前位置':(owned?'点击切换':(chkT.ok?'未购入':'🔒 未解锁')))+'</div>'+
+            '<div style="font-size:11px;margin-top:4px;color:'+(isCurV?'var(--yl)':'var(--cy)')+'">'+(isCurV?'当前位置':'点击切换')+'</div>'+
             '</div>';
         }).join('')+'</div>';
       return head+variants;
@@ -1922,42 +1871,7 @@ function panelMap(){
 
   return svg+curInfo+cityList+venueList;
 }
-/* 城市/场地详情弹窗 */
-function cityPickModal(cid){
-  var c=CITIES.find(function(x){return x.id===cid});if(!c)return;
-  var unlocked=isCityUnlocked(cid),isCur=G.city===cid;
-  var chk=canUnlockCity(c);
-  var btn=isCur?'<div class="btn" data-act="closeModal">关闭</div>':
-           unlocked?'<div class="btn mg" data-act="cityGo" data-id="'+cid+'">🚚 迁都到此</div><div class="btn" data-act="closeModal">再想想</div>':
-           chk.ok?'<div class="btn yl" data-act="cityGo" data-id="'+cid+'">🔓 解锁并迁都（'+unlockHint(c.unlock)+'）</div><div class="btn" data-act="closeModal">再想想</div>':
-           '<div class="btn" data-act="closeModal">知道了</div>';
-  showModal('<h3>🌆 '+c.n+'</h3><div class="mtxt">'+
-    '<p style="text-align:center;font-size:32px;margin:10px 0">'+(unlocked?'🌆':'🔒')+'</p>'+
-    '<p style="text-align:center;color:var(--cy)">'+c.dsc+'</p>'+
-    (unlocked?'<p style="text-align:center;color:var(--gr);font-size:12px">✓ 已解锁</p>':
-              '<p style="text-align:center;color:var(--dim);font-size:12px">解锁条件：'+unlockHint(c.unlock)+'</p>')+
-    '</div><div class="mops">'+btn+'</div>',true);
-}
-function venuePickModal(key){
-  var p=key.split(':');if(p.length!==2)return;
-  var tid=p[0],vid=p[1];
-  var t=VENUE_TIERS.find(function(x){return x.id===tid});if(!t)return;
-  var arr=VENUE_VARIANTS[tid]||[];
-  var v=arr.find(function(x){return x.id===vid});if(!v)return;
-  var owned=isVenueOwned(tid,vid);
-  var isCur=G.venue.tier===tid&&G.venue.variant===vid;
-  var chkT=canUnlockTier(t);
-  var btn=isCur?'<div class="btn" data-act="closeModal">关闭</div>':
-           owned?'<div class="btn mg" data-act="venueGo" data-id="'+key+'">🏪 搬到这里</div><div class="btn" data-act="closeModal">再想想</div>':
-           chkT.ok?'<div class="btn yl" data-act="venueGo" data-id="'+key+'">💰 购入（'+unlockHint(t.unlock)+'）</div><div class="btn" data-act="closeModal">再想想</div>':
-           '<div class="btn" data-act="closeModal">知道了</div>';
-  showModal('<h3>'+t.n+' · '+v.n+'</h3><div class="mtxt">'+
-    '<p style="text-align:center;color:var(--cy)">'+v.dsc+'</p>'+
-    '<p style="text-align:center;color:var(--dim);font-size:12px">日租 ¥'+fmt(Math.round(t.rent*(diff().rent||1)))+' · 客流 ×'+t.flow+' · 客单 ×'+t.payK+' · 菜单上限 '+t.menuMax+'</p>'+
-    (owned?'<p style="text-align:center;color:var(--gr);font-size:12px">✓ 已购入</p>':
-           '<p style="text-align:center;color:var(--dim);font-size:12px">购入：'+unlockHint(t.unlock)+'</p>')+
-    '</div><div class="mops">'+btn+'</div>',true);
-}
+
 
 /* ================= 白天操作 ================= */
 function ingCap(){return [30,50,80,120,180,260][G.ups.wh||0]}
@@ -2071,7 +1985,7 @@ function doPrestigeGo(){
   // 配方研发树 + 常客好感跨分店保留（持久成长）
   Object.keys(keepRt).forEach(function(k){G.rdtree[k]=true});
   CUSTS.forEach(function(c){if(keepVip[c.id]&&keepVip[c.id].s){G.vipMap[c.id].s=keepVip[c.id].s;G.vipMap[c.id].lvl=vipLvl(c.id)}});
-  // v0.13.0 城市和场地跨分店保留
+  // v0.13.1 城市和场地跨分店保留
   G.city=keepCity;G.venue=keepVenue;
   rollWeather();rollEvent();rollQuest();rollChallenge();
   saveGame();closeModal();
@@ -2480,10 +2394,10 @@ function copyCard(){
 }
 function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
   NIGHT.active=false;
-  // v0.13.0 哈尔滨 allK 全收益乘区
+  // v0.13.1 哈尔滨 allK 全收益乘区
   var CB=cityBuff();
   if(CB.allK&&CB.allK!==1){var bonus=Math.round(NIGHT.earn*(CB.allK-1));NIGHT.earn+=bonus;G.money+=bonus}
-  // v0.13.0 每日场地租金（独立于周租）
+  // v0.13.1 每日场地租金（独立于周租）
   var VT=curVenueTier();
   var rentTxt='';
   if(VT.rent>0){
@@ -2638,10 +2552,9 @@ document.addEventListener('click',function(e){
     case 'vipPanel':SFX.click();showVipPanel();break;
     case 'prestige':askPrestige();break;
     case 'prestigeGo':doPrestigeGo();break;
-    case 'cityPick':cityPickModal(id);break;
     case 'cityGo':doMigrate(id);break;
-    case 'venuePick':venuePickModal(id);break;
     case 'venueGo':(function(){var p=id.split(':');if(p.length===2)doSwitchVenue(p[0],p[1])})();break;
+    case 'goMap':TAB='map';SFX.click();renderDay();break;
     case 'startNight':startNight();break;
     case 'npause':togglePause();break;
     case 'nspeed':toggleSpeed();break;
