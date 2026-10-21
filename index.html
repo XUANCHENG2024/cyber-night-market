@@ -305,7 +305,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.14.0 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.15.0 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
@@ -485,6 +485,17 @@ const INGS=[
   {id:'egg',n:'合成蛋液',c:5,cat:'st',ic:'🥚'},
   {id:'berry',n:'霓虹浆果',c:7,cat:'sw',ic:'🫐'},
   {id:'chili',n:'赛博辣椒',c:6,cat:'st',ic:'🌶️'},
+  /* v0.15.0 城市专属食材（city=限定城市，仅本城可进货；迁出时库存按成本自动转手） */
+  {id:'douban', n:'郫县豆瓣酱',  c:5, cat:'st',ic:'🫘',city:'chengdu'},
+  {id:'bullfat',n:'老火锅牛油',  c:6, cat:'st',ic:'🧈',city:'chongqing'},
+  {id:'qinjiao',n:'秦椒辣子',    c:5, cat:'st',ic:'🫑',city:'xian'},
+  {id:'shrimp', n:'珠江鲜虾',    c:10,cat:'st',ic:'🦐',city:'guangzhou'},
+  {id:'sesame', n:'醇香芝麻酱',  c:4, cat:'st',ic:'🥜',city:'wuhan'},
+  {id:'duojiao',n:'发酵剁椒',    c:5, cat:'st',ic:'🫙',city:'changsha'},
+  {id:'osman',  n:'糖桂花',      c:6, cat:'sw',ic:'🌼',city:'hangzhou'},
+  {id:'crab',   n:'阳澄湖蟹粉',  c:12,cat:'st',ic:'🦀',city:'shanghai'},
+  {id:'tianmian',n:'六必居甜面酱',c:5, cat:'st',ic:'🥫',city:'beijing'},
+  {id:'sausage',n:'秋林红肠',    c:11,cat:'st',ic:'🌭',city:'harbin'},
 ];
 function ingN(id){var i=INGS.find(function(x){return x.id===id});return i?i.n:id}
 
@@ -539,12 +550,29 @@ const RECIPES=[
   {id:'r46',a:'flour',b:'berry',n:'驴打滚',     p:26,cat:'sw',after:['r2'], city:'beijing'},
   {id:'r47',a:'meat', b:'ice',  n:'冰城锅包肉', p:36,cat:'st',after:['r8'], city:'harbin'},
   {id:'r48',a:'egg',  b:'berry',n:'极光拔丝地瓜',p:26,cat:'sw',after:['r21'],city:'harbin'},
+  /* v0.15.0 城市菜系 T2（after 本城 T1 菜，需本城专属食材，形成 基础→T1→T2 三级研发链） */
+  {id:'r49',a:'douban', b:'meat', n:'串串香火拼盘',p:42,cat:'st',after:['r29'],city:'chengdu'},
+  {id:'r50',a:'bullfat',b:'veg',  n:'九宫格毛血旺',p:40,cat:'st',after:['r31'],city:'chongqing'},
+  {id:'r51',a:'qinjiao',b:'flour',n:'biangbiang面',p:36,cat:'st',after:['r33'],city:'xian'},
+  {id:'r52',a:'shrimp', b:'flour',n:'鲜虾云吞面',  p:40,cat:'st',after:['r35'],city:'guangzhou'},
+  {id:'r53',a:'sesame', b:'rice', n:'糊汤粉',      p:32,cat:'st',after:['r37'],city:'wuhan'},
+  {id:'r54',a:'duojiao',b:'meat', n:'剁椒鱼头',    p:44,cat:'st',after:['r39'],city:'changsha'},
+  {id:'r55',a:'osman',  b:'rice', n:'桂花糖藕',    p:34,cat:'sw',after:['r42'],city:'hangzhou'},
+  {id:'r56',a:'crab',   b:'flour',n:'蟹粉小笼包',  p:46,cat:'st',after:['r43'],city:'shanghai'},
+  {id:'r57',a:'tianmian',b:'flour',n:'老北京炸酱面',p:34,cat:'st',after:['r45'],city:'beijing'},
+  {id:'r58',a:'sausage',b:'flour',n:'红肠大列巴',  p:38,cat:'st',after:['r47'],city:'harbin'},
   /* v0.14.0 稀有食谱（rare:true — 不在研发树中，仅成就奖励解锁；a/b 仅作烹饪耗料） */
   {id:'rx1',a:'meat', b:'veg',  n:'御膳·佛跳墙',p:58,cat:'st',rare:true},
   {id:'rx2',a:'flour',b:'meat', n:'黄金蟹粉汤包',p:48,cat:'st',rare:true},
   {id:'rx3',a:'flour',b:'veg',  n:'黑松露霓虹披萨',p:46,cat:'st',rare:true},
   {id:'rx4',a:'berry',b:'fruit',n:'分子草莓塔', p:42,cat:'sw',rare:true},
   {id:'rx5',a:'sugar',b:'ice',  n:'干冰龙须酥', p:40,cat:'sw',rare:true},
+  /* v0.15.0 稀有食谱第二批（key 允许与研发菜冲突，rdGo 已过滤 rare） */
+  {id:'rx6', a:'meat', b:'chili',n:'赛博龙虾宴',  p:66,cat:'st',rare:true},
+  {id:'rx7', a:'sugar',b:'berry',n:'星尘棉花糖',  p:44,cat:'sw',rare:true},
+  {id:'rx8', a:'flour',b:'egg',  n:'量子烤冷面',  p:42,cat:'st',rare:true},
+  {id:'rx9', a:'tea',  b:'ice',  n:'虚空波霸奶茶',p:40,cat:'dr',rare:true},
+  {id:'rx10',a:'ice',  b:'fruit',n:'彩虹分子冰雕',p:46,cat:'sw',rare:true},
 ];
 RECIPES.forEach(function(r){r.key=[r.a,r.b].sort().join('+')});
 function recById(id){return RECIPES.find(function(r){return r.id===id})}
@@ -553,8 +581,9 @@ function rdAvail(r,unl){if(!r.after)return true;return r.after.every(function(p)
 function cityName(cid){var c=CITIES.find(function(x){return x.id===cid});return c?c.n:cid}
 function cityDishes(cid){return RECIPES.filter(function(r){return r.city===cid})}
 function recCityOk(r){return !r.city||(!!G&&G.city===r.city)}
+function ingCityOk(i){return !i.city||(!!G&&G.city===i.city)}
 function cityFoodCount(){return G?G.dishes.filter(function(id){var r=recById(id);return r&&r.city}).length:0}
-function checkCityFood(){var n=cityFoodCount();if(n>=3)checkAch('cityFood3');if(n>=10)checkAch('cityFood10')}
+function checkCityFood(){var n=cityFoodCount();if(n>=3)checkAch('cityFood3');if(n>=10)checkAch('cityFood10');if(n>=15)checkAch('cityFood15')}
 function dishAllDone(){return RECIPES.every(function(r){return r.rare||G.dishes.indexOf(r.id)>=0})}
 function grantAchDishes(g){ACHS.forEach(function(a){if(ACH[a.id]&&a.rew&&a.rew.dish&&g.dishes.indexOf(a.rew.dish)<0)g.dishes.push(a.rew.dish)})}
 function achOfDish(rid){return ACHS.find(function(a){return a.rew&&a.rew.dish===rid})||null}
@@ -669,8 +698,15 @@ function doMigrate(cid){
   var before=G.menu.length;
   G.menu=G.menu.filter(function(id){var r=recById(id);return r&&(!r.city||r.city===cid)});
   var off=before-G.menu.length;
+  /* v0.15.0 迁都时异地专属食材按成本自动转手退款（食材带不走） */
+  var refund=0;
+  Object.keys(G.ings).forEach(function(k){
+    var ig=INGS.find(function(x){return x.id===k});
+    if(ig&&ig.city&&ig.city!==cid&&G.ings[k]>0){refund+=ig.c*G.ings[k];G.ings[k]=0}
+  });
+  if(refund>0)G.money+=refund;
   saveGame();renderDay();closeModal();
-  toast('🚚 已迁都到「'+c.n+'」，今晚开始营业'+(off?'（'+off+' 道异地菜已自动下架）':''),'gr');SFX.upgrade();
+  toast('🚚 已迁都到「'+c.n+'」，今晚开始营业'+(off?'（'+off+' 道异地菜已自动下架）':'')+(refund?'（异地特产转手 +¥'+refund+'）':''),'gr');SFX.upgrade();
   if(LIFE.citiesUnlocked.length>=5)checkAch('city5');
   if(LIFE.citiesUnlocked.length>=CITIES.length)checkAch('cityAll');
 }
@@ -858,6 +894,12 @@ const ACHS=[
   /* v0.14.0 城市菜系成就 */
   {id:'cityFood3', n:'地方小吃搜罗', d:'解锁 3 道城市特色菜',  ic:'🍢', rew:{rep:15,money:300,tal:1}},
   {id:'cityFood10',n:'行走的美食家', d:'解锁 10 道城市特色菜', ic:'🥡', rew:{rep:30,money:800,tal:2}},
+  /* v0.15.0 稀有食谱成就第二批 */
+  {id:'nightRich',n:'夜市传说',   d:'单晚营收 ≥ ¥3000',     ic:'🌟', rew:{rep:30,money:800, tal:1,dish:'rx6'}},
+  {id:'serve500',n:'门庭若市',   d:'累计接待 500 位顾客',   ic:'👥', rew:{rep:25,money:600, tal:1,dish:'rx7'}},
+  {id:'rdTry50', n:'百折不挠',   d:'累计研发尝试 50 次',    ic:'🔬', rew:{rep:20,money:500, tal:2,dish:'rx8'}},
+  {id:'brands5', n:'连锁大亨',   d:'开出 5 家分店',         ic:'🏬', rew:{rep:60,money:2000,tal:3,dish:'rx9'}},
+  {id:'cityFood15',n:'美食集邮家',d:'解锁 15 道城市特色菜', ic:'🧺', rew:{rep:40,money:1200,tal:2,dish:'rx10'}},
 ];
 
 /* ================= 排行榜 ================= */
@@ -917,7 +959,7 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
   var vip={};CUSTS.forEach(function(c){vip[c.id]={s:0,lvl:0}});
   var baseUnl={};RECIPES.forEach(function(r){if(!r.after&&!r.rare)baseUnl[r.id]=true});
   var g={day:1,money:d.money,rep:50,ings:{},dishes:[],menu:[],staff:[],ups:{},talents:{},tp:0,
-  weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0},over:null,
+  weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0,rdTry:0},over:null,
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
   priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip,
   city:'chengdu',venue:{tier:'stall',variant:'main'}};
@@ -968,8 +1010,11 @@ function sanitizeSave(d){
     g.day=clamp(Math.round(+d.day||1),1,9999);
     g.money=clamp(Math.round(+d.money||0),0,1e9);
     g.rep=clamp(+d.rep||0,0,100);
+    /* v0.15.0 先解析城市，供食材/菜单城市清洗使用 */
+    var sCity=(typeof d.city==='string'&&CITIES.some(function(c){return c.id===d.city}))?d.city:'chengdu';
     var ings={};INGS.forEach(function(i){
-      var v=Math.floor(+((d.ings||{})[i.id])||0);if(v>0)ings[i.id]=clamp(v,0,999)});
+      var v=Math.floor(+((d.ings||{})[i.id])||0);
+      if(v>0&&(!i.city||i.city===sCity))ings[i.id]=clamp(v,0,999)}); // 异地专属食材清洗为 0
     g.ings=ings;
     var dishes=(Array.isArray(d.dishes)?d.dishes:[]).filter(function(id){return recById(id)});
     g.dishes=dishes;
@@ -985,7 +1030,8 @@ function sanitizeSave(d){
     g.prestiges=clamp(Math.round(+d.prestiges||0),0,999);
     g.total={served:clamp(Math.round(+(d.total&&d.total.served)||0),0,1e9),
              earned:clamp(Math.round(+(d.total&&d.total.earned)||0),0,1e12),
-             spec:clamp(Math.round(+(d.total&&d.total.spec)||0),0,1e9)};
+             spec:clamp(Math.round(+(d.total&&d.total.spec)||0),0,1e9),
+             rdTry:clamp(Math.round(+(d.total&&d.total.rdTry)||0),0,1e9)};
     g.lastTs=clamp(Math.round(+d.lastTs||Date.now()),0,Date.now());
     g.event=(d.event&&typeof d.event==='object'&&EVENTS.some(function(e){return e.id===d.event.id}))?{id:d.event.id,done:!!d.event.done}:null;
     var mst={};RECIPES.forEach(function(r){var v=Math.round(+((d.mastery||{})[r.id])||0);if(v>0)mst[r.id]=clamp(v,0,99999)});
@@ -1025,7 +1071,7 @@ function sanitizeSave(d){
     if(g.skinsOwned.indexOf('default')<0)g.skinsOwned.push('default');
     if(g.skinsOwned.indexOf(g.skin)<0)g.skin='default';
     /* v0.13.1 city/venue 白名单：自由选位，只校验 id/变体合法 */
-    g.city=(typeof d.city==='string'&&CITIES.some(function(c){return c.id===d.city}))?d.city:'chengdu';
+    g.city=sCity;
     (function(){
       var ok=false;
       if(d.venue&&typeof d.venue==='object'){
@@ -1712,7 +1758,7 @@ function renderDay(){
   var CC=curCity(),VT=curVenueTier(),VV=curVenueVar();
   $('#dayStatus').innerHTML=
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
-    '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span><br><span style="color:var(--cy);font-size:11px">🍜 本地特色：'+cityDishes(CC.id).map(function(r){var got=G.dishes.indexOf(r.id)>=0;return got?r.n:'🔒'+r.n}).join('、')+'</span>'+
+    '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span><br><span style="color:var(--cy);font-size:11px">🍜 本地特色：'+cityDishes(CC.id).map(function(r){var got=G.dishes.indexOf(r.id)>=0;return got?r.n:'🔒'+r.n}).join('、')+'<br>🫙 特产食材：'+INGS.filter(function(i){return i.city===CC.id}).map(function(i){return i.ic+i.n}).join('、')+'</span>'+
       '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div></div>'+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
@@ -1744,10 +1790,13 @@ function panelBuy(){
   var h=lack.length?'<div class="lackTip">⚠️ 缺料预警：'+lack.map(ingN).join('、')+' —— 菜单里有菜做不了！</div>':'';
   var bulk=(G.talents.bulk||0)>0;
   var evD=ev(),CM=G.cmod||{},disc=((evD&&evD.buyDisc)||1)*(CM.buyDisc||1);
-  h+='<div class="ing-grid">'+INGS.map(function(i){
+  var cityIngs=INGS.filter(function(i){return i.city&&i.city===G.city});
+  if(cityIngs.length)h+='<div class="panel-tip" style="color:var(--cy)">🌆 本地特产食材：'+cityIngs.map(function(i){return i.ic+' '+i.n}).join('、')+'（迁出自动转手）</div>';
+  h+='<div class="ing-grid">'+INGS.filter(ingCityOk).map(function(i){
     var price=Math.max(1,Math.round(i.c*(bulk?.8:1)*disc));
     var cur=G.ings[i.id]||0,cap=ingCap(),full=cur>=cap;
-    return '<div class="ing-card"><b>'+i.ic+' '+i.n+'</b>'+
+    var isCityIng=i.city&&i.city===G.city;
+    return '<div class="ing-card"><b>'+i.ic+' '+i.n+(isCityIng?' <span style="color:var(--cy);font-size:11px">🌆本地</span>':'')+'</b>'+
       '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦折扣中</span>':'')+'</div>'+
       '<div class="ops"><div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="1"'+(full?' disabled':'')+'>+1</div>'+
       '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10"'+(full?' disabled':'')+'>+10</div></div></div>'}).join('')+'</div>';
@@ -1755,9 +1804,10 @@ function panelBuy(){
   return h;
 }
 function panelRd(){
-  var chips=INGS.map(function(i){
+  var chips=INGS.filter(ingCityOk).map(function(i){
     var sel=(RD1===i.id||RD2===i.id)?' sel':'';
-    return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+'</div>'}).join('');
+    var isCityIng=i.city&&i.city===G.city;
+    return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+(isCityIng?'<br><span style="font-size:9px;color:var(--cy)">🌆本地</span>':'')+'</div>'}).join('');
   var picked=RD1?ingN(RD1)+(RD2?' + '+ingN(RD2):''):'（点选两种食材）';
   var known=RECIPES.filter(function(r){return G.dishes.indexOf(r.id)>=0});
   var avail=RECIPES.filter(function(r){return rdAvail(r,G.rdtree)&&G.dishes.indexOf(r.id)<0&&!r.rare&&recCityOk(r)});
@@ -1781,7 +1831,7 @@ function panelRd(){
   if(rares.length){
     h+='<div class="panel-tip">🎁 稀有食谱（无法研发，成就奖励）：'+rares.map(function(r){var a=achOfDish(r.id);return '<b style="color:var(--mg)">'+r.n+'</b>'+(a?'（成就「'+a.n+'」）':'')}).join('、')+'</div>';
   }
-  h+='<div class="panel-tip">🌳 研发树提示：部分菜需要先解锁「母菜」才能研发（如 甜酱华夫 → 抹茶可丽）。每座城市有 2 道特色菜系，迁都后即可研发；稀有食谱只能靠成就奖励获得。连锁重开后已解锁的菜会保留。</div>';
+  h+='<div class="panel-tip">🌳 研发树提示：部分菜需要先解锁「母菜」才能研发（如 甜酱华夫 → 抹茶可丽）。每座城市有 3 道特色菜系（2 道 T1 + 1 道 T2 需本城特产食材），迁都后即可研发；稀有食谱只能靠成就奖励获得。连锁重开后已解锁的菜会保留。</div>';
   return h;
 }
 function panelMenu(){
@@ -1946,6 +1996,7 @@ function panelMap(){
 function ingCap(){return [30,50,80,120,180,260][G.ups.wh||0]}
 function buyIng(fid,n){
   var ing=INGS.find(function(i){return i.id===fid});if(!ing)return;
+  if(ing.city&&ing.city!==G.city){toast('🌆 「'+ing.n+'」是「'+cityName(ing.city)+'」特产，需迁往当地进货','rd');SFX.bad();return}
   var cap=ingCap(),cur=G.ings[fid]||0;
   if(cur>=cap){toast('📦 仓库已满（上限 '+cap+'）——去「设备」升级仓库扩容','rd');SFX.bad();return}
   n=Math.min(n,cap-cur);
@@ -1965,6 +2016,9 @@ function rdPick(fid){
 }
 function rdGo(){
   if(!RD1||!RD2){toast('先选两种食材','rd');return}
+  /* v0.15.0 研发尝试计数（成功/失败/被拦截均计入，成就「百折不挠」判定用） */
+  G.total.rdTry=(G.total.rdTry||0)+1;
+  if(G.total.rdTry>=50)checkAch('rdTry50');
   var key=[RD1,RD2].sort().join('+');
   var hit=RECIPES.find(function(r){return r.key===key&&!r.rare});
   var free=G.freeRd;
@@ -2048,7 +2102,7 @@ function askPrestige(){
     '<div class="mops"><div class="btn mg" data-act="prestigeGo">确认开店</div><div class="btn" data-act="closeModal">再想想</div></div>',true);
 }
 function doPrestigeGo(){
-  LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');
+  LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');if(LIFE.brands>=5)checkAch('brands5'); /* v0.15.0 */
   var p=(G.prestiges||0)+1;
   var oldDiff=G.difficulty;
   var keepRt=JSON.parse(JSON.stringify(G.rdtree||{}));
@@ -2484,9 +2538,12 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   saveLBWeek(Math.round(NIGHT.earn));
   if(NIGHT.earn>=500)checkAch('n500');
   if(NIGHT.earn>=1000)checkAch('n1000');
+  if(NIGHT.earn>=3000)checkAch('nightRich'); /* v0.15.0 */
   if(LIFE.served>=100)checkAch('s100');
+  if(LIFE.served>=500)checkAch('serve500'); /* v0.15.0 */
   if(G.day>=30)checkAch('d30');
   if((G.prestiges||0)>=3)checkAch('brands3');
+  if((G.prestiges||0)>=5)checkAch('brands5'); /* v0.15.0 */
   if(G.money>=5000)checkAch('rich');if(G.money>=20000)checkAch('rich2');
   G.total.served+=NIGHT.servedN;G.total.earned+=NIGHT.earn;
   // 挑战完成度检测
