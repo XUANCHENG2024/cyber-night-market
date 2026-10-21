@@ -13,7 +13,7 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
  --bg:#06060f;--pan:#0d0d1f;--pan2:#12122a;--line:#26264a;
- --cy:#22d3ee;--mg:#ff40ff;--yl:#ffd166;--gr:#34d399;--rd:#ff5d5d;--dim:#8b8bb0;
+ --cy:#22d3ee;--mg:#ff40ff;--yl:#ffd166;--gr:#34d399;--rd:#ff5d5d;--dim:#8b8bb0;--gold:#ffc832;
 }
 html,body{height:100%}
 body{
@@ -35,7 +35,7 @@ button{font-family:inherit}
  background:rgba(6,6,15,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
  padding:8px 10px;border-bottom:1px solid var(--line);margin:0 -12px 12px}
 .tb{background:var(--pan2);border:1px solid var(--line);border-radius:8px;
- padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap}
+ padding:9px 12px;font-size:13px;font-weight:600;white-space:nowrap} /* v0.17.3 顶栏触控目标加高 */
 .tb.grow{flex:1;text-align:center;color:var(--yl);font-size:15px}
 .tb.btn{cursor:pointer}
 .tb.btn:active{transform:scale(.92)}
@@ -91,7 +91,7 @@ h3{margin-bottom:10px;font-size:17px}
  border:1px solid var(--mg);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:10px}
 #tabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
 .tab{flex:1;min-width:64px;background:var(--pan);border:1px solid var(--line);border-radius:8px;
- padding:8px 4px;font-size:12px;text-align:center;cursor:pointer;white-space:nowrap}
+ padding:11px 4px;font-size:12px;text-align:center;cursor:pointer;white-space:nowrap}
 .tab.on{background:linear-gradient(135deg,rgba(34,211,238,.25),rgba(255,64,255,.25));border-color:var(--cy);color:var(--cy)}
 #dayPanel{background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:260px}
 .lackTip{background:rgba(255,93,93,.12);border:1px solid var(--rd);border-radius:8px;
@@ -104,10 +104,10 @@ h3{margin-bottom:10px;font-size:17px}
 .dex-ic{font-size:24px;margin-bottom:4px}
 .dex-n{font-size:12px;font-weight:700;color:var(--gr);margin-bottom:3px}
 .dex-card.locked .dex-n{color:var(--dim)}
-.dex-ing{font-size:10px;color:var(--dim);margin-bottom:2px}
+.dex-ing{font-size:11px;color:var(--dim);margin-bottom:2px}
 .dex-p{font-size:12px;color:var(--yl);font-weight:700}
-.mst{font-size:10px;margin-left:3px}
-.stsk{font-size:10px;background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-left:4px}
+.mst{font-size:11px;margin-left:3px}
+.stsk{font-size:11px;background:var(--pan);border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-left:4px}
 .skin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .skin-card{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;cursor:pointer}
 .skin-card.cur{border-color:var(--cy);box-shadow:0 0 8px rgba(34,211,238,.3)}
@@ -126,10 +126,10 @@ h3{margin-bottom:10px;font-size:17px}
 .ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .ach-card{display:flex;gap:8px;background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px;align-items:center}
 .ach-card.locked{opacity:.5}
-.ach-card.got{border-color:var(--gold,rgba(255,200,50,.6));box-shadow:0 0 8px rgba(255,200,50,.15)}
+.ach-card.got{border-color:var(--gold);box-shadow:0 0 8px rgba(255,200,50,.15)}
 .ach-ic{font-size:26px;min-width:34px;text-align:center}
 .ach-n{font-size:12px;font-weight:700}
-.ach-d{font-size:10px;color:var(--dim);margin-top:2px}
+.ach-d{font-size:11px;color:var(--dim);margin-top:2px}
 body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
 body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
@@ -137,8 +137,9 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 .cMood{font-size:11px;margin-left:2px}
 .cust{position:relative}
 .cust.sp{border-color:var(--yl);box-shadow:0 0 8px rgba(255,209,102,.18)}
-.spT{font-size:9px;color:var(--yl);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.prio{position:absolute;top:4px;right:4px;font-size:10px;background:var(--pan2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--cy);z-index:2}
+.spT{font-size:11px;color:var(--yl);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prio{flex:0 0 100%;order:9;margin-top:6px;text-align:center;font-size:12px;background:var(--pan2);
+ border:1px solid var(--line);border-radius:8px;padding:6px 4px;color:var(--cy)} /* v0.17.4 优先钮改卡片底部整行，消除误触 */
 .cook{cursor:pointer}
 .pctl{display:flex;align-items:center;gap:4px;margin-top:5px}
 .pctl .btn{padding:2px 9px;font-size:13px}
@@ -148,7 +149,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 .ing-card .stk b{color:var(--gr)}
 .ops{display:flex;gap:6px}
 .rd-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.chip{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px 4px;
+.chip{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:12px 4px;
  text-align:center;font-size:11px;cursor:pointer}
 .chip:active{transform:scale(.95)}
 .chip.sel{border-color:var(--cy);color:var(--cy);background:rgba(34,211,238,.12);box-shadow:0 0 10px rgba(34,211,238,.3)}
@@ -163,11 +164,15 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
  border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px}
 .panel-tip{font-size:11px;color:var(--dim);line-height:1.8;margin-top:10px}
 .prestige-box{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
-#dayFooter{margin-top:14px}
+#dayFooter{position:sticky;bottom:0;z-index:90;margin:14px -12px 0;
+ padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+ background:rgba(6,6,15,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+ border-top:1px solid var(--line)} /* v0.17.3 开摊按钮常驻底部，免长滚动 */
 
 /* ---------- 夜晚 ---------- */
 #scr-night{position:relative}
 .night-hud{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#nightStat{font-size:11px;color:var(--dim);white-space:nowrap} /* v0.17.4 夜晚实时接待/流失计数 */
 #nightClock{font-size:22px;font-weight:900;color:var(--cy);min-width:64px;font-variant-numeric:tabular-nums}
 #nightClock.warn{color:var(--rd);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.35}}
@@ -181,13 +186,13 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 .cbar{flex:1;height:8px;background:var(--pan2);border-radius:4px;overflow:hidden}
 .cbar i{display:block;height:100%;background:var(--yl);border-radius:4px}
 #custQueue{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:120px;margin-bottom:12px}
-.cust{display:flex;gap:8px;align-items:center;background:var(--pan);border:1px solid var(--line);
+.cust{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--pan);border:1px solid var(--line);
  border-radius:12px;padding:10px;cursor:pointer;transition:transform .08s ease}
 .cust:active{transform:scale(.95)}
 .cust .cAv{font-size:26px}
 .cust .cInfo{flex:1;min-width:0}
 .cust .cInfo b{font-size:12px;display:block}
-.cust .cInfo span{font-size:10px;color:var(--dim);display:block;margin:2px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust .cInfo span{font-size:11px;color:var(--dim);display:block;margin:2px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cust.noing{opacity:.45}
 .pbar{height:5px;background:var(--pan2);border-radius:3px;overflow:hidden}
 .pbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--gr),var(--yl),var(--rd));border-radius:3px}
@@ -216,7 +221,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 .mops .btn{flex:1}
 .gloop{display:flex;justify-content:center;align-items:center;gap:6px;margin:14px 0;flex-wrap:wrap}
 .gnode{background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:18px;text-align:center}
-.gnode span{display:block;font-size:10px;margin-top:4px}
+.gnode span{display:block;font-size:11px;margin-top:4px}
 .arr{color:var(--dim);font-size:12px}
 .gdots{display:flex;justify-content:center;gap:6px;margin-top:14px}
 .gdot{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -283,10 +288,15 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
  .ing-grid{grid-template-columns:1fr 1fr}
  .rd-chips{grid-template-columns:repeat(4,1fr)}
  .dex-grid{grid-template-columns:1fr 1fr}
- .tb{padding:5px 8px;font-size:12px}
- .prio{font-size:14px;padding:8px 12px;top:6px;right:6px}
+ .tb{padding:8px 10px;font-size:12px} /* v0.17.3 移动端保持 ~36px 触控高度，不再缩扁 */
+ .prio{font-size:14px;padding:8px 12px}
  .pctl .btn{padding:8px 14px;font-size:15px}
 }
+@media (max-width:360px){ /* v0.17.4 超小屏微断点 */
+ .rd-chips{grid-template-columns:repeat(3,1fr)}
+ .tab{min-width:56px;font-size:11px}
+}
+.btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.cust:focus-visible,.tb:focus-visible,.cook:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -297,23 +307,23 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="tb grow" id="tbMoney">¥300</div>
     <div class="tb" id="tbRep">📟 50</div>
     <div class="tb btn" id="btnBgm" data-act="bgm" title="背景音乐开关">🎵</div>
-    <div class="tb btn" id="btnSound" data-act="sound" title="音效开关">🔊</div>
-    <div class="tb btn" id="btnMenu" data-act="toMenu" title="主菜单">🏠</div>
+    <div class="tb btn" id="btnSound" data-act="sound" title="音效开关" role="button" tabindex="0">🔊</div>
+    <div class="tb btn" id="btnMenu" data-act="toMenu" title="主菜单" role="button" tabindex="0">🏠</div>
   </div>
 
   <section id="scr-menu">
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.17.2 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.17.4 · 2026-10-22</div>
     <div class="menu-btns">
-      <div class="btn mg" data-act="newgame">⚡ 开张大吉（新游戏）</div>
-      <div class="btn yl hidden" id="btnContinue" data-act="continue">🌙 继续经营</div>
-      <div class="btn" data-act="guide">📖 玩法说明</div>
-      <div class="btn" data-act="career">📊 生涯数据</div>
-      <div class="btn" data-act="settings">⚙️ 音效设置</div>
-      <div class="btn" data-act="syncCenter">🔄 数据同步</div>
-      <div class="btn rd" data-act="askReset">🗑️ 清除存档</div>
+      <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
+      <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
+      <div class="btn" data-act="guide" role="button" tabindex="0">📖 玩法说明</div>
+      <div class="btn" data-act="career" role="button" tabindex="0">📊 生涯数据</div>
+      <div class="btn" data-act="settings" role="button" tabindex="0">⚙️ 音效设置</div>
+      <div class="btn" data-act="syncCenter" role="button" tabindex="0">🔄 数据同步</div>
+      <div class="btn rd" data-act="askReset" role="button" tabindex="0">🗑️ 清除存档</div>
     </div>
     <div id="menuLife"></div>
     <div class="menu-foot">霓虹闪烁的 2124 年，你从大厂裸辞，决定在赛博夜市支起一个小摊。<br>
@@ -327,7 +337,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div id="tabs"></div>
     <div id="dayPanel"></div>
     <div id="dayFooter">
-      <div class="btn big mg" id="startNightBtn" data-act="startNight">🌙 开始今晚营业</div>
+      <div class="btn big mg" id="startNightBtn" data-act="startNight" role="button" tabindex="0">🌙 开始今晚营业</div>
     </div>
   </section>
 
@@ -335,16 +345,17 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="night-hud">
       <div id="nightClock">60s</div>
       <div id="timebar"><i></i></div>
+      <div id="nightStat">✅ 0 · ❌ 0</div>
       <div id="nightEarn">¥0</div>
     </div>
     <div id="cookList"></div>
     <div id="custQueue"></div>
     <div class="night-ops">
-      <div class="btn" data-act="npause">⏸ 暂停</div>
-      <div class="btn" data-act="nspeed">⏩ 极速</div>
+      <div class="btn" data-act="npause" role="button" tabindex="0">⏸ 暂停</div>
+      <div class="btn" data-act="nspeed" role="button" tabindex="0">⏩ 极速</div>
     </div>
     <div id="staffLine"></div>
-    <div class="night-tip">点顾客接单 · 点烹饪👆催菜 · ⬆优先 · 空格暂停 / S 极速</div>
+    <div class="night-tip">点顾客接单 · 点烹饪条催菜 · 卡底「⬆ 优先接待」插队 · 空格暂停 / S 极速</div>
   </section>
 
   <section id="scr-settle" class="hidden">
@@ -1908,7 +1919,7 @@ function renderDay(){
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
     (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
   $('#tabs').innerHTML=TABS.map(function(t){
-    return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'">'+t[1]+'</div>'}).join('');
+    return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'" role="button" tabindex="0">'+t[1]+'</div>'}).join('');
   renderDayPanel();
   renderTop();
 }
@@ -1950,7 +1961,7 @@ function panelRd(){
   var chips=INGS.filter(ingCityOk).map(function(i){
     var sel=(RD1===i.id||RD2===i.id)?' sel':'';
     var isCityIng=i.city&&i.city===G.city;
-    return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+(isCityIng?'<br><span style="font-size:9px;color:var(--cy)">🌆本地</span>':'')+'</div>'}).join('');
+    return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'">'+i.ic+'<br>'+i.n+(isCityIng?'<br><span style="font-size:10px;color:var(--cy)">🌆本地</span>':'')+'</div>'}).join('');
   var picked=RD1?ingN(RD1)+(RD2?' + '+ingN(RD2):''):'（点选两种食材）';
   var known=RECIPES.filter(function(r){return G.dishes.indexOf(r.id)>=0});
   var avail=RECIPES.filter(function(r){return rdAvail(r,G.rdtree)&&G.dishes.indexOf(r.id)<0&&!r.rare&&recCityOk(r)});
@@ -2009,7 +2020,7 @@ function panelDex(){
   var h='<div class="panel-tip">已解锁 '+known.length+' / '+RECIPES.length+' 道菜品</div>';
   h+='<div class="dex-grid">'+RECIPES.map(function(r){
     var got=known.indexOf(r.id)>=0;
-    var tag=r.city?'<div style="font-size:10px;color:var(--cy)">🌆 '+cityName(r.city)+'</div>':(r.rare?'<div style="font-size:10px;color:var(--mg)">🎁 成就稀有</div>':'');
+    var tag=r.city?'<div style="font-size:11px;color:var(--cy)">🌆 '+cityName(r.city)+'</div>':(r.rare?'<div style="font-size:11px;color:var(--mg)">🎁 成就稀有</div>':'');
     return '<div class="dex-card'+(got?'':' locked')+'">'+
       '<div class="dex-ic">'+(got?CAT_IC[r.cat].split(' ')[0]:'❓')+'</div>'+
       '<div class="dex-n">'+(got?r.n:'？？？')+'</div>'+
@@ -2170,7 +2181,7 @@ function panelMap(){
                 visited?'<span style="color:var(--gr)">✓ 已到访</span>':
                 '<span style="color:var(--cy)">点击前往</span>';
       return '<div class="vip-row" data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer">'+
-        '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b><br><span style="font-size:10px;color:var(--cy)">🍜 '+cityDishes(c.id).map(function(r){return r.n}).join('、')+'</span></span>'+
+        '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b><br><span style="font-size:11px;color:var(--cy)">🍜 '+cityDishes(c.id).map(function(r){return r.n}).join('、')+'</span></span>'+
         '<span style="font-size:11px;color:var(--dim)">'+c.dsc+'</span>'+
         '<span style="font-size:11px">'+stat+'<br><span class="btn sm yl" data-act="shopOpenAsk" data-id="'+c.id+'" style="padding:3px 8px;font-size:11px;margin-top:3px">🏪 开店</span></span></div>';
     }).join('')+'</div>';
@@ -2714,17 +2725,18 @@ function renderNight(){
   $('#nightClock').textContent=Math.ceil(remain)+'s';
   $('#timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
   $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
   $('#cookList').innerHTML=NIGHT.cooking.map(function(k){
-    return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:10px;color:var(--cy)">👆催</span></div>'}).join('');
+    return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:11px;color:var(--cy)">👆催</span></div>'}).join('');
   $('#custQueue').innerHTML=NIGHT.queue.map(function(c){
     var rec=recById(c.dish);
     var lack=!rec||(G.ings[rec.a]||0)<1||(G.ings[rec.b]||0)<1;
-    return '<div class="cust'+(lack?' noing':'')+(c.sp?' sp':'')+'" data-cid="'+c.cid+'">'+
-      '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆</div>'+
+    return '<div class="cust'+(lack?' noing':'')+(c.sp?' sp':'')+'" data-cid="'+c.cid+'" role="button" tabindex="0">'+
       '<div class="cAv">'+c.e+'</div><div class="cInfo"><b>'+c.n+' <span class="cMood">'+moodEmo(c)+'</span></b>'+
       (c.sp?'<span class="spT">'+esc(c.spD||'')+'</span>':'')+
       '<span>'+esc(c.dishN)+' '+(c.sp==='beggar'?'❤️ 施舍':'¥'+c.price)+'</span>'+
-      '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div></div>'}).join('');
+      '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div>'+
+      '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆ 优先接待</div></div>'}).join('');
   $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
   var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
   var sb=document.querySelector('[data-act="nspeed"]');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
@@ -2739,6 +2751,7 @@ function updateNightTick(){
   tb.firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
   tb.classList.toggle('warn',low);
   $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
   NIGHT.queue.forEach(function(c,i){
     var el=$('#custQueue').children[i];
     if(el){var b=el.querySelector('.pbar i');if(b)b.style.width=(100*Math.max(0,c.pat)/c.patMax)+'%';var m=el.querySelector('.cMood');if(m)m.textContent=moodEmo(c)}
@@ -2764,6 +2777,11 @@ function prioCust(cid){
   if(i>0){var c=NIGHT.queue.splice(i,1)[0];NIGHT.queue.unshift(c);SFX.click();renderNight()}
 }
 document.addEventListener('keydown',function(e){
+  var kt=e.target;
+  if(kt&&kt.getAttribute&&kt.getAttribute('role')==='button'){ /* v0.17.4 键盘激活 role=button 控件，且不再误触夜晚快捷键 */
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();kt.click()}
+    return;
+  }
   if(!NIGHT||!NIGHT.active)return;
   if(e.code==='Space'){e.preventDefault();togglePause()}
   else if(e.key==='s'||e.key==='S')toggleSpeed();
