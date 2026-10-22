@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -55,6 +55,7 @@ button{font-family:inherit}
 .btn.yl{background:linear-gradient(135deg,#b8860b,#ffd166);border-color:var(--yl);color:#1a1a05}
 .btn.gr{background:linear-gradient(135deg,#0f9d6e,#34d399);border-color:var(--gr);color:#03130c}
 .btn.rd{background:linear-gradient(135deg,#b03030,#ff5d5d);border-color:var(--rd);color:#fff}
+.btn.cy{background:linear-gradient(135deg,#0e7490,#22d3ee);border-color:var(--cy);color:#031418}
 .btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
 .btn.big{display:block;width:100%;padding:14px;font-size:16px}
 h3{margin-bottom:10px;font-size:17px}
@@ -180,6 +181,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 #timebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--cy),var(--mg));border-radius:6px;transition:width .2s linear}
 #timebar.warn i{background:linear-gradient(90deg,var(--rd),var(--yl))}
 #nightEarn{font-size:16px;font-weight:800;color:var(--yl);min-width:70px;text-align:right}
+#nightScene{width:100%;height:190px;display:block;margin:0 0 8px;border-radius:10px;pointer-events:none;user-select:none;-webkit-user-select:none}
 #cookList{margin-bottom:10px}
 .cook{display:flex;align-items:center;gap:10px;background:var(--pan);border:1px solid var(--line);
  border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px}
@@ -316,7 +318,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.18.2 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.20.0 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -349,11 +351,13 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
       <div id="nightStat">✅ 0 · ❌ 0</div>
       <div id="nightEarn">¥0</div>
     </div>
+    <canvas id="nightScene"></canvas>
     <div id="cookList"></div>
     <div id="custQueue"></div>
     <div class="night-ops">
       <div class="btn" data-act="npause" role="button" tabindex="0">⏸ 暂停</div>
       <div class="btn" data-act="nspeed" role="button" tabindex="0">⏩ 极速</div>
+      <div class="btn" data-act="gfxTg" role="button" tabindex="0" title="切换场景画质">🎨 场景</div>
     </div>
     <div id="staffLine"></div>
     <div class="night-tip">点顾客接单 · 点烹饪条催菜 · 卡底「⬆ 优先接待」插队<span class="kb-hint"> · 空格暂停 / S 极速</span></div>
@@ -592,7 +596,9 @@ function rdAvail(r,unl){if(!r.after)return true;return r.after.every(function(p)
 /* v0.14.0 城市菜系 / 稀有食谱助手 */
 function cityName(cid){var c=CITIES.find(function(x){return x.id===cid});return c?c.n:cid}
 function cityDishes(cid){return RECIPES.filter(function(r){return r.city===cid})}
-function recCityOk(r){return !r.city||(!!G&&G.city===r.city)}
+function recCityOk(r){return !r.city||(!!G&&(G.city===r.city||cityChainOk(r.city)))}
+/* v0.19.0 供应链打通判定：进口过/持有该城任一特产，即解锁该城菜系的研发与上架 */
+function cityChainOk(cid){return !!G&&INGS.some(function(i){return i.city===cid&&((G.imported||{})[i.id]||(G.ings[i.id]||0)>0)})}
 function ingCityOk(i){return !i.city||(!!G&&G.city===i.city)}
 function cityFoodCount(){return G?G.dishes.filter(function(id){var r=recById(id);return r&&r.city}).length:0}
 function checkCityFood(){var n=cityFoodCount();if(n>=3)checkAch('cityFood3');if(n>=10)checkAch('cityFood10');if(n>=15)checkAch('cityFood15')}
@@ -718,6 +724,7 @@ function doMigrate(cid){
     if(ig&&ig.city&&ig.city!==cid&&G.ings[k]>0){refund+=ig.c*G.ings[k];G.ings[k]=0}
   });
   if(refund>0)G.money+=refund;
+  G.imported={}; /* v0.19.0 迁都即断链：进口豁免随特产转手清零，想再经营需重新下单 */
   saveGame();renderDay();closeModal();
   toast('🚚 已迁都到「'+c.n+'」，今晚开始营业'+(off?'（'+off+' 道异地菜已自动下架）':'')+(refund?'（异地特产转手 +¥'+refund+'）':''),'gr');SFX.upgrade();
   if(LIFE.citiesUnlocked.length>=5)checkAch('city5');
@@ -962,6 +969,15 @@ const ACHS=[
   /* v0.16.0 店长招募成就 */
   {id:'mgr1', n:'知人善任', d:'招募第 1 名店长',       ic:'🧑‍💼', rew:{rep:10,money:200}},
   {id:'mgr3', n:'管理大师', d:'同时拥有 3 名店长',      ic:'🏗️', rew:{rep:30,money:800,tal:2}},
+  /* v0.19.0 跨城供应链成就 */
+  {id:'logi1',  n:'冷链首单',   d:'首次使用冷链快运跨城采购',   ic:'🚚', rew:{rep:5,money:100}},
+  {id:'logiMax',n:'物流巨头',   d:'冷链物流升至满级',           ic:'🛰️', rew:{rep:20,money:800,tal:1}},
+  {id:'chain3', n:'三城一味',   d:'菜单同时上架 3 座城市的特色菜', ic:'🕸️', rew:{rep:25,money:600,tal:1}},
+  /* v0.19.0 物价套利 + 夜市争霸赛成就 */
+  {id:'arb1',      n:'低买高卖',   d:'首次跨城倒卖套利成功',       ic:'💹', rew:{rep:5,money:150}},
+  {id:'arb10',     n:'倒爷本色',   d:'累计套利收益达 ¥1000',       ic:'🤑', rew:{rep:20,money:1000,tal:1}},
+  {id:'contest1',  n:'夜市霸主',   d:'首次达成夜市争霸赛目标',     ic:'🏆', rew:{rep:15,money:500}},
+  {id:'contestGold',n:'金杯加冕',  d:'夜市争霸赛超额 150% 完成',   ic:'🥇', rew:{rep:30,money:1200,tal:2}},
 ];
 
 /* ================= 排行榜 ================= */
@@ -1025,7 +1041,8 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0,rdTry:0},over:null,
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
   priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip,
-  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0,faves:[],miles:[]};
+  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0,faves:[],miles:[],imported:{},logi:{lv:0,orders:[]},
+  cityPrices:{},cityPriceDelta:{},contest:null,sellTotal:0,arbTotal:0,gfxScene:1};
   var s0=mkShop('s1','成都·1号店',true,'chengdu','stall','main');s0.money=g.money;s0.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};g.shops=[s0];
   grantAchDishes(g); // 成就稀有食谱随档保留（成就为账号级进度）
   return g}
@@ -1078,10 +1095,12 @@ function sanitizeSave(d){
     g.rep=clamp(+d.rep||0,0,100);
     /* v0.15.0 先解析城市，供食材/菜单城市清洗使用 */
     var sCity=(typeof d.city==='string'&&CITIES.some(function(c){return c.id===d.city}))?d.city:'chengdu';
+    /* v0.19.0 进口白名单先解析：ings/menu 清洗的冷链豁免依据 */
+    var imp={};if(d.imported&&typeof d.imported==='object'){INGS.forEach(function(i){if(i.city&&d.imported[i.id])imp[i.id]=true})}
     var ings={};INGS.forEach(function(i){
       var v=Math.floor(+((d.ings||{})[i.id])||0);
-      if(v>0&&(!i.city||i.city===sCity))ings[i.id]=clamp(v,0,999)}); // 异地专属食材清洗为 0
-    g.ings=ings;
+      if(v>0&&(!i.city||i.city===sCity||imp[i.id]))ings[i.id]=clamp(v,0,999)}); // 异地专属食材清洗为 0（冷链进口豁免）
+    g.ings=ings;g.imported=imp;
     var dishes=(Array.isArray(d.dishes)?d.dishes:[]).filter(function(id){return recById(id)});
     g.dishes=dishes;
     grantAchDishes(g); // v0.14.0 成就稀有食谱在旧档加载时回补
@@ -1160,6 +1179,33 @@ function sanitizeSave(d){
     g.skinsOwned=(Array.isArray(d.skinsOwned)?d.skinsOwned:[]).filter(function(id){return SKINS.some(function(s){return s.id===id})});
     g.tp=clamp(Math.round(+d.tp||0),0,999);
     g.dayBuy=clamp(Math.round(+d.dayBuy||0),0,1e9);
+    /* v0.19.0 物流等级 + 在途订单白名单清洗（等级越界回退、订单超容量截断） */
+    var lv2=clamp(Math.round(+(d.logi&&d.logi.lv)||0),0,LOGI_LV.length-1);
+    var ords=(d.logi&&Array.isArray(d.logi.orders)?d.logi.orders:[]).map(function(o){
+      if(!o||typeof o!=='object')return null;
+      var ig=INGS.find(function(x){return x.id===o.ing});
+      if(!ig||!ig.city)return null;
+      return{id:String(o.id||'o_x').slice(0,20),ing:ig.id,qty:clamp(Math.round(+o.qty||1),1,99),cost:clamp(Math.round(+o.cost||0),0,1e6),arriveDay:clamp(Math.round(+o.arriveDay||g.day),1,9999)};
+    }).filter(Boolean).slice(0,LOGI_LV[lv2].cap);
+    g.logi={lv:lv2,orders:ords};
+    /* v0.19.0 物价/抛售/套利/赛事白名单清洗 */
+    g.sellTotal=clamp(Math.round(+d.sellTotal||0),0,1e9);
+    g.arbTotal=clamp(Math.round(+d.arbTotal||0),0,1e9);
+    g.cityPrices={};g.cityPriceDelta={};
+    if(d.cityPrices&&typeof d.cityPrices==='object'){
+      CITIES.forEach(function(c){
+        var src=d.cityPrices[c.id];if(!src||typeof src!=='object')return;
+        var row={},drow={},dsrc=(d.cityPriceDelta&&d.cityPriceDelta[c.id])||{};
+        INGS.forEach(function(i){var v=+src[i.id];if(isFinite(v))row[i.id]=clamp(v,.3,2.5);var dv=+dsrc[i.id];if(isFinite(dv))drow[i.id]=clamp(dv,-2.2,2.2)});
+        if(Object.keys(row).length){g.cityPrices[c.id]=row;g.cityPriceDelta[c.id]=drow}
+      });
+    }
+    g.contest=null;
+    if(d.contest&&typeof d.contest==='object'){
+      var cc=d.contest;
+      var cds=(Array.isArray(cc.dishes)?cc.dishes:[]).filter(function(x){return RECIPES.some(function(r){return r.id===x})}).slice(0,3);
+      if(cds.length===3)g.contest={day:clamp(Math.round(+cc.day||g.day),1,9999),city:CITIES.some(function(c){return c.id===cc.city})?cc.city:g.city,dishes:cds,reqN:clamp(Math.round(+cc.reqN||5),1,99),bonus:clamp(Math.round(+cc.bonus||200),0,1e6),done:cc.done===true};
+    }
     g.difficulty=DIFFS.some(function(x){return x.id===d.difficulty})?d.difficulty:'norm';
     if(g.skinsOwned.indexOf('default')<0)g.skinsOwned.push('default');
     if(g.skinsOwned.indexOf(g.skin)<0)g.skin='default';
@@ -1178,7 +1224,7 @@ function sanitizeSave(d){
       g.venue={tier:'stall',variant:'main'};
     })();
     /* v0.14.0 菜单城市清洗：异地菜系不允许留在菜单上 */
-    g.menu=g.menu.filter(function(id){var r=recById(id);return r&&(!r.city||r.city===g.city)});
+    g.menu=g.menu.filter(function(id){var r=recById(id);return r&&(!r.city||r.city===g.city||INGS.some(function(i){return i.city===r.city&&(imp[i.id]||(g.ings[i.id]||0)>0)}))}); /* v0.19.0 冷链打通城市的异地菜豁免 */
     /* v0.17.0 店铺注册表清洗 + 旧档迁移 */
     var shops=[];
     (Array.isArray(d.shops)?d.shops:[]).slice(0,20).forEach(function(s){
@@ -1202,9 +1248,9 @@ function sanitizeSave(d){
       }).filter(Boolean);
       /* 休眠店快照清洗（活跃店快照随后由 g 顶字段覆盖） */
       var sp=(s.snap&&typeof s.snap==='object')?s.snap:{};
-      var sings={};INGS.forEach(function(ig){var v2=Math.floor(+((sp.ings||{})[ig.id])||0);if(v2>0&&(!ig.city||ig.city===cid))sings[ig.id]=clamp(v2,0,999)});
+      var sings={};INGS.forEach(function(ig){var v2=Math.floor(+((sp.ings||{})[ig.id])||0);if(v2>0&&(!ig.city||ig.city===cid||imp[ig.id]))sings[ig.id]=clamp(v2,0,999)}); /* v0.19.0 进口豁免 */
       var sdishes=(Array.isArray(sp.dishes)?sp.dishes:[]).filter(function(id){return recById(id)});
-      var smenu=sdishes.filter(function(id){var rr=recById(id);return (Array.isArray(sp.menu)?sp.menu:[]).indexOf(id)>=0&&rr&&(!rr.city||rr.city===cid)});
+      var smenu=sdishes.filter(function(id){var rr=recById(id);return (Array.isArray(sp.menu)?sp.menu:[]).indexOf(id)>=0&&rr&&(!rr.city||rr.city===cid||INGS.some(function(i2){return i2.city===rr.city&&(imp[i2.id]||(sings[i2.id]||0)>0)}))}); /* v0.19.0 冷链链路易地菜豁免 */
       var sstaff=(Array.isArray(sp.staff)?sp.staff:[]).slice(0,99).map(function(x){var sk2=(x&&STAFF_SKILLS.some(function(k){return k.id===x.sk}))?x.sk:choice(STAFF_SKILLS).id;return{n:String((x&&x.n)||'员工').slice(0,8),v:1,sk:sk2}});
       var sups={};UPS.forEach(function(u){var v3=Math.round(+((sp.ups||{})[u.id])||0);if(v3>0)sups[u.id]=clamp(v3,0,5)});
       var spm={};RECIPES.forEach(function(r){var v4=+((sp.priceMod||{})[r.id]);if(isFinite(v4)&&v4>0){v4=clamp(Math.round(v4*10)/10,.5,1.5);if(v4!==1)spm[r.id]=v4}});
@@ -1241,6 +1287,8 @@ function sanitizeSave(d){
     var as=shops.filter(function(s){return s.id===g.shopId})[0];
     as.city=g.city;as.venue={tier:g.venue.tier,variant:g.venue.variant};as.money=g.money;as.lv=shopLv(as);
     as.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};
+    /* v0.20.0 画质开关白名单 */
+    g.gfxScene=(d.gfxScene===0||d.gfxScene===1)?d.gfxScene:1;
     return g;
   }catch(e){return null}
 }
@@ -1722,7 +1770,7 @@ function guidePrev(){if(guidePage>0){guidePage--;SFX.click();renderGuide()}}
 
 /* ================= 开局 / 继续 ================= */
 function newGame(){
-  G=freshG();rollWeather();rollEvent();rollQuest();rollChallenge();
+  G=freshG();rollWeather();rollEvent();rollQuest();rollChallenge();rollCityPrices();rollContest();
   saveGame();
   SFX.click();
   if(coachSeen())startFirst(); // 老玩家跳过图文引导直接开局
@@ -1928,7 +1976,7 @@ function checkAch(id){
 }
 
 /* ================= 白天渲染 ================= */
-const TABS=[['buy','🛒 进货'],['map','🗺️ 地图'],['shops','🏪 店铺'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备']];
+const TABS=[['buy','🛒 进货'],['map','🗺️ 地图'],['market','📈 行情'],['shops','🏪 店铺'],['rd','🔬 研发'],['menu','📋 菜单'],['dex','📖 图鉴'],['staff','👨‍🍳 后厨'],['ups','🏗️ 设备'],['contest','🏆 赛事']];
 /** 白天主界面渲染：状态行/人气菜/任务/店铺入口 */
 function renderDay(){
   applySkin();
@@ -1970,6 +2018,8 @@ function renderDayPanel(){
   else if(TAB==='staff')el.innerHTML=panelStaff();
   else if(TAB==='shops')el.innerHTML=panelShops();
   else if(TAB==='map')el.innerHTML=panelMap();
+  else if(TAB==='market')el.innerHTML=panelMarket();
+  else if(TAB==='contest')el.innerHTML=panelContest();
   else el.innerHTML=panelUps();
 }
 function panelBuy(){
@@ -1980,18 +2030,38 @@ function panelBuy(){
   var cityIngs=INGS.filter(function(i){return i.city&&i.city===G.city});
   if(cityIngs.length)h+='<div class="panel-tip" style="color:var(--cy)">🌆 本地特产食材：'+cityIngs.map(function(i){return i.ic+' '+i.n}).join('、')+'（迁出自动转手）</div>';
   h+='<div class="ing-grid">'+INGS.filter(ingCityOk).map(function(i){
-    var price=Math.max(1,Math.round(i.c*(bulk?.8:1)*disc));
+    var d=cityPriceDelta(G.city,i.id);
+    var arrow=d>0?'↗':d<0?'↘':'→';
+    var dCol=d>0?'var(--rd)':d<0?'var(--gr)':'var(--dim)';
+    var price=Math.max(1,Math.round(i.c*cityPrice(G.city,i.id)*(bulk?.8:1)*disc));
     var cur=G.ings[i.id]||0,cap=ingCap(),full=cur>=cap;
     var isCityIng=i.city&&i.city===G.city;
     return '<div class="ing-card"><b>'+i.ic+' '+i.n+(isCityIng?' <span style="color:var(--cy);font-size:11px">🌆本地</span>':'')+'</b>'+
-      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦折扣中</span>':'')+'</div>'+
+      '<div class="stk">库存 <b'+(full?' style="color:var(--rd)"':'')+'>'+cur+' / '+cap+'</b> · 单价 ¥'+price+' <span style="color:'+dCol+';font-size:11px">'+arrow+'</span>'+(bulk?' <span style="color:var(--gr)">(-20%)</span>':'')+(disc<1?' <span style="color:var(--cy)">📦折扣中</span>':'')+'</div>'+
       '<div class="ops"><div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="1"'+(full?' disabled':'')+'>+1</div>'+
-      '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10"'+(full?' disabled':'')+'>+10</div></div></div>'}).join('')+'</div>';
+      '<div class="btn sm gr" data-act="buy" data-id="'+i.id+'" data-n="10"'+(full?' disabled':'')+'>+10</div>'+
+      (cur>0?'<div class="btn sm rd" data-act="sellIng" data-id="'+i.id+'" data-n="1">-1</div><div class="btn sm rd" data-act="sellIng" data-id="'+i.id+'" data-n="10">-10</div>':'')+
+      '</div></div>'}).join('')+'</div>';
   h+='<div class="panel-tip">📦 仓库 Lv'+(G.ups.wh||0)+'：单种食材最多囤 '+ingCap()+' 份，去「🏗️ 设备」升级仓库扩容</div>';
+  /* v0.19.0 冷链快运：跨城直采异地特产（明早到货），下单即打通该城菜系研发/上架 */
+  var LL=LOGI_LV[G.logi.lv],upc=LOGI_UP_COST[G.logi.lv];
+  var foreignIngs=INGS.filter(function(i){return i.city&&i.city!==G.city});
+  h+='<div class="panel-tip" style="margin-top:10px">🚚 <b>冷链快运 Lv'+G.logi.lv+'</b>（在途 '+G.logi.orders.length+'/'+LL.cap+' 单 · 运费 ×'+LL.disc+' · 明早到货）——下单即解锁对应城市的菜系研发与上架'+
+    (upc?' <div class="btn sm cy" data-act="logiUp" style="display:inline-block;margin-left:6px" role="button" tabindex="0">⬆ 升级 ¥'+upc+'</div>':' <b style="color:var(--gr)">已满级</b>')+'</div>';
+  h+='<div class="ing-grid">'+foreignIngs.map(function(i){
+    var lp=logiPrice(i),of=G.logi.orders.length>=LL.cap,imp2=G.imported[i.id];
+    var od=cityPriceDelta(i.city,i.id);
+    var oArrow=od>0?'↗':od<0?'↘':'→';
+    var oCol=od>0?'var(--rd)':od<0?'var(--gr)':'var(--dim)';
+    return '<div class="ing-card"><b>'+i.ic+' '+i.n+(imp2?' <span style="color:var(--gr);font-size:11px">✅已打通</span>':'')+'</b>'+
+      '<div class="stk">🌆 '+cityName(i.city)+'特产 · ¥'+lp+'/份 <span style="color:'+oCol+';font-size:11px">'+oArrow+'</span> · 明早到'+(imp2?'':'（首单解锁'+cityName(i.city)+'菜系）')+'</div>'+
+      '<div class="ops"><div class="btn sm cy" data-act="logiOrder" data-id="'+i.id+'" data-n="1"'+(of?' disabled':'')+'>+1</div>'+
+      '<div class="btn sm cy" data-act="logiOrder" data-id="'+i.id+'" data-n="5"'+(of?' disabled':'')+'>+5</div></div></div>'}).join('')+'</div>';
+  if(G.logi.orders.length)h+='<div class="panel-tip">📦 在途：'+G.logi.orders.map(function(o){var ig=INGS.find(function(x){return x.id===o.ing});return (ig?ig.ic+ig.n:o.ing)+' ×'+o.qty}).join('、')+'（明早到货）</div>';
   return h;
 }
 function panelRd(){
-  var chips=INGS.filter(ingCityOk).map(function(i){
+  var chips=INGS.filter(function(i){return ingCityOk(i)||(G.ings[i.id]||0)>0}).map(function(i){ /* v0.19.0 进口食材有库存即可选 */
     var sel=(RD1===i.id||RD2===i.id)?' sel':'';
     var isCityIng=i.city&&i.city===G.city;
     return '<div class="chip'+sel+'" data-act="rdPick" data-id="'+i.id+'" role="button" tabindex="0">'+i.ic+'<br>'+i.n+(isCityIng?'<br><span style="font-size:10px;color:var(--cy)">🌆本地</span>':'')+'</div>'}).join('');
@@ -2029,7 +2099,7 @@ function panelMenu(){
   var h=G.dishes.map(function(id){
     var r=recById(id),on=G.menu.indexOf(id)>=0;
     var pm=(G.priceMod||{})[id]||1;
-    var foreign=r.city&&r.city!==G.city;
+    var foreign=r.city&&!recCityOk(r); /* v0.19.0 冷链打通的城市不再视为异地 */
     var tag=(r.city?'<span style="color:var(--cy);font-size:11px"> 🌆'+cityName(r.city)+'</span>':'')+(r.rare?'<span style="color:var(--mg);font-size:11px"> 🎁稀有</span>':'');
     return '<div class="dish-card"><div class="dn"><b>'+(CAT_IC[r.cat]||'')+' '+r.n+tag+mastStar(id)+'</b><span>售价 ¥'+dishPrice(r)+(mastLvl(id)?' · 熟练+'+(5*mastLvl(id))+'%':'')+(foreign?' · <span style="color:var(--rd)">需迁回'+cityName(r.city)+'</span>':'')+'</span>'+
       '<div class="pctl"><div class="btn sm" data-act="priceAdj" data-id="'+id+'" data-d="-0.1">−</div><span class="pv">×'+pm.toFixed(1)+'</span><div class="btn sm" data-act="priceAdj" data-id="'+id+'" data-d="0.1">＋</div></div></div>'+
@@ -2250,15 +2320,162 @@ function ingCap(){return [30,50,80,120,180,260][G.ups.wh||0]}
 /** 进货：白名单食材 + 异地拦截 + 折扣乘区，实扣计入 dayBuy @param {string} fid 食材id @param {number} n 数量 */
 function buyIng(fid,n){
   var ing=INGS.find(function(i){return i.id===fid});if(!ing)return;
-  if(ing.city&&ing.city!==G.city){toast('🌆 「'+ing.n+'」是「'+cityName(ing.city)+'」特产，需迁往当地进货','rd');SFX.bad();return}
+  if(ing.city&&ing.city!==G.city){toast('🌆 「'+ing.n+'」是「'+cityName(ing.city)+'」特产——迁往当地进货，或用下方🚚冷链快运','rd');SFX.bad();return}
   var cap=ingCap(),cur=G.ings[fid]||0;
   if(cur>=cap){toast('📦 仓库已满（上限 '+cap+'）——去「设备」升级仓库扩容','rd');SFX.bad();return}
   n=Math.min(n,cap-cur);
   var E=ev(),CM=G.cmod||{},disc=((E&&E.buyDisc)||1)*(CM.buyDisc||1);
-  var cost=Math.max(1,Math.round(ing.c*((G.talents.bulk||0)>0?.8:1)*disc))*n;
+  var cost=Math.max(1,Math.round(ing.c*cityPrice(G.city,fid)*((G.talents.bulk||0)>0?.8:1)*disc))*n;
   if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
   G.money-=cost;G.ings[fid]=cur+n;G.dayBuy=(G.dayBuy||0)+cost; /* v0.17.2 当日采购额计入报表成本 */
   SFX.buy();saveGame();renderDayPanel();renderTop();
+}
+/* ================= v0.19.0 跨城供应链（冷链快运） ================= */
+const LOGI_LV=[{cap:2,disc:1},{cap:3,disc:.9},{cap:4,disc:.8},{cap:5,disc:.7}]; /* 在途上限/运费折扣 */
+const LOGI_UP_COST=[300,600,1200,2400]; /* lv0→1→2→3→4 升级费 */
+function logiDisc(){return LOGI_LV[G.logi.lv].disc}
+/** 冷链单价：特产成本 ×2（跨城加价）× 物流折扣 @param {Object} ing 食材 @returns {number} 单价 */
+function logiPrice(ing){return Math.max(1,Math.round(ing.c*cityPrice(ing.city,ing.id)*2*logiDisc()))}
+/** 冷链下单：次日到货；下单即打通该城供应链（解锁其菜系研发/上架） @param {string} fid 食材id @param {number} n 数量(1-20) */
+function logiOrder(fid,n){
+  var ing=INGS.find(function(i){return i.id===fid});if(!ing||!ing.city)return;
+  if(ing.city===G.city){toast('本地特产直接进货即可','yl');return}
+  n=clamp(Math.round(+n||1),1,20);
+  var L=LOGI_LV[G.logi.lv];
+  if(G.logi.orders.length>=L.cap){toast('🚚 冷链仓位已满（'+L.cap+' 单在途）——升级物流扩容','rd');SFX.bad();return}
+  var cost=logiPrice(ing)*n;
+  if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
+  G.money-=cost;
+  G.logi.orders.push({id:'o'+(Date.now()%100000)+'_'+G.logi.orders.length,ing:fid,qty:n,cost:cost,arriveDay:G.day+1});
+  G.imported[fid]=true; /* 下单即打通供应链（cityChainOk 依据），食材明早才入库 */
+  SFX.buy();toast('🚚 冷链订单已下：'+ing.ic+ing.n+' ×'+n+'（-¥'+cost+'，明早到货，已解锁「'+cityName(ing.city)+'」菜系）','gr');
+  checkAch('logi1');saveGame();renderDayPanel();renderTop();
+}
+/** 物流升级：在途上限+运费折扣，满级触发成就 */
+function logiUp(){
+  var lv=G.logi.lv;
+  if(lv>=LOGI_LV.length-1){toast('🚚 物流已满级','yl');return}
+  var cost=LOGI_UP_COST[lv];
+  if(G.money<cost){toast('资金不足','rd');SFX.bad();return}
+  G.money-=cost;G.logi.lv=lv+1;
+  SFX.upgrade();toast('🛰️ 物流升级 Lv'+G.logi.lv+'：在途上限 '+LOGI_LV[G.logi.lv].cap+' 单 · 运费 ×'+LOGI_LV[G.logi.lv].disc,'gr');
+  if(G.logi.lv>=LOGI_LV.length-1)checkAch('logiMax');
+  saveGame();renderDayPanel();renderTop();
+}
+/** 冷链到货入库（nextDay 调用）：超仓部分截断 @returns {number} 到货单数 */
+function arriveLogi(){
+  if(!G.logi||!G.logi.orders.length)return 0;
+  var arr=[],cap=ingCap();
+  G.logi.orders=G.logi.orders.filter(function(o){
+    if(o.arriveDay>G.day)return true;
+    var cur=G.ings[o.ing]||0,add=Math.min(o.qty,Math.max(0,cap-cur));
+    if(add>0)G.ings[o.ing]=cur+add;
+    arr.push(ingN(o.ing)+' ×'+o.qty+(add<o.qty?'（超仓实收 '+add+'）':''));
+    return false;
+  });
+  if(arr.length)toast('🚚 冷链到货：'+arr.join('、'),'gr');
+  return arr.length;
+}
+/** 菜单城市多样性成就：同店上架 ≥3 城特色菜 */
+function checkChain(){
+  if(!G||!G.menu)return;
+  var cs={};G.menu.forEach(function(id){var r=recById(id);if(r&&r.city)cs[r.city]=1});
+  if(Object.keys(cs).length>=3)checkAch('chain3');
+}
+
+/* ================= v0.19.0 城市物价波动 + 跨城倒卖 + 夜市争霸赛 ================= */
+/** 每日随机波动各城市食材价格（0.75~1.35 倍），异地特产基准价上浮 30% */
+function rollCityPrices(){
+  var old=G.cityPrices||{};
+  G.cityPrices={};G.cityPriceDelta={};
+  CITIES.forEach(function(c){
+    G.cityPrices[c.id]={};G.cityPriceDelta[c.id]={};
+    INGS.forEach(function(i){
+      var base=i.city&&i.city!==c.id?1.3:1; /* 外地特产基准价上浮 */
+      var v=Math.round((base*(0.75+Math.random()*0.6))*10)/10;
+      v=clamp(v,.3,2.5);
+      G.cityPrices[c.id][i.id]=v;
+      var ov=(old[c.id]&&old[c.id][i.id])||base;
+      G.cityPriceDelta[c.id][i.id]=Math.round((v-ov)*10)/10;
+    });
+  });
+}
+function cityPrice(cid,ingId){var m=(G.cityPrices&&G.cityPrices[cid])||{};return m[ingId]||1}
+function cityPriceDelta(cid,ingId){var m=(G.cityPriceDelta&&G.cityPriceDelta[cid])||{};return m[ingId]||0}
+/** 抛售食材：按当前城市物价 ×0.8 回款，低买高卖赚差价 @param {string} fid @param {number} n */
+function sellIng(fid,n){
+  var ing=INGS.find(function(i){return i.id===fid});if(!ing)return;
+  var cur=G.ings[fid]||0;
+  if(cur<=0){toast('没有库存','rd');SFX.bad();return}
+  n=Math.min(n,cur);
+  var price=Math.max(1,Math.round(ing.c*cityPrice(G.city,ing.id)*.8));
+  var gain=price*n;
+  var costBasis=ing.c*n; /* 基准成本（按原价），盈利即套利 */
+  G.ings[fid]=cur-n;G.money+=gain;
+  G.sellTotal=(G.sellTotal||0)+gain;
+  var profit=gain-costBasis;
+  if(profit>0){G.arbTotal=(G.arbTotal||0)+profit;checkAch('arb1');if(G.arbTotal>=1000)checkAch('arb10')}
+  SFX.buy();toast('📦 抛售 '+ing.ic+ing.n+' ×'+n+'，回款 +¥'+gain+(profit>0?'（套利 +¥'+profit+'）':''),'gr');
+  saveGame();renderDayPanel();renderTop();
+}
+/** 每周日（每 7 天）随机一座城市举办夜市争霸赛，需当晚同时上架 3 道指定菜并卖出 N 份 */
+function rollContest(){
+  if(G.day%7!==0){G.contest=null;return}
+  var c=choice(CITIES);
+  var pool=RECIPES.filter(function(r){return !r.rare&&G.dishes.indexOf(r.id)>=0});
+  if(pool.length<3){G.contest=null;return}
+  var ds=[];
+  while(ds.length<3&&pool.length){var r=pool.splice(Math.floor(Math.random()*pool.length),1)[0];ds.push(r.id)}
+  G.contest={day:G.day,city:c.id,dishes:ds,reqN:5+Math.floor(G.day/10),done:false,bonus:Math.round(200+G.day*30)};
+}
+/** 争霸赛结算：当晚同时上架 3 道指定菜且总卖出数达标 */
+function checkContest(){
+  var cc=G.contest;if(!cc||cc.done)return;
+  if(cc.day!==G.day)return; /* 仅当天有效 */
+  var okDishes=cc.dishes.every(function(id){return NIGHT.dishSet&&NIGHT.dishSet.has(id)});
+  var okN=NIGHT.sellN>=cc.reqN;
+  if(okDishes&&okN){
+    cc.done=true;
+    G.money+=cc.bonus;G.rep=clamp(G.rep+8,0,100);
+    toast('🏆 夜市争霸赛达成！奖金 +¥'+cc.bonus+' · 声望 +8','gold');
+    checkAch('contest1');
+    if(NIGHT.sellN>=Math.ceil(cc.reqN*1.5)){G.tp=(G.tp||0)+1;toast('🏆 超额完成！天赋点 +1','gold');checkAch('contestGold')}
+  }
+}
+function panelMarket(){
+  var h='<div class="panel-tip">📈 每日物价波动：各城市对同一食材的收购价不同，跨城倒卖可套利。冷链快运按「产地当日价 ×2」计费；本地抛售按「本地当日价 ×0.8」回款。</div>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+  h+='<tr><th style="text-align:left;padding:4px">食材</th>';
+  CITIES.forEach(function(c){h+='<th style="padding:4px;text-align:center'+(G.city===c.id?';color:var(--yl)':'')+'">'+c.n+(G.city===c.id?'📍':'')+'</th>'});
+  h+='</tr>';
+  INGS.forEach(function(ing){
+    h+='<tr>';
+    h+='<td style="padding:4px">'+ing.ic+' '+ing.n+(ing.city?'<div style="font-size:10px;color:var(--cy)">'+cityName(ing.city)+'特产</div>':'')+'</td>';
+    CITIES.forEach(function(c){
+      var mult=cityPrice(c.id,ing.id);
+      var isOrigin=ing.city===c.id;
+      var canBuy=!ing.city||isOrigin;
+      var price=canBuy?Math.round(ing.c*mult):'-';
+      var d=cityPriceDelta(c.id,ing.id);
+      var arrow=d>0?'↗':d<0?'↘':'→';
+      var color=d>0?'var(--rd)':d<0?'var(--gr)':'var(--dim)';
+      h+='<td style="padding:4px;text-align:center;color:'+color+'">'+(canBuy?'¥'+price:'-')+'<div style="font-size:10px;color:'+color+'">'+arrow+'</div></td>';
+    });
+    h+='</tr>';
+  });
+  h+='</table></div>';
+  return h;
+}
+function panelContest(){
+  var cc=G.contest;
+  if(!cc)return '<div class="panel-tip">本周暂无夜市争霸赛，下周日（每 7 天）再来！</div>';
+  var c=cityName(cc.city);
+  var h='<div class="panel-tip">🏆 <b>夜市争霸赛 · '+c+'</b>（第 '+cc.day+' 天）</div>';
+  h+='<div class="panel-tip">参赛条件：今晚菜单同时上架以下 3 道菜，并累计卖出 ≥'+cc.reqN+' 份</div>';
+  h+='<div class="ing-grid">'+cc.dishes.map(function(id){var r=recById(id);var have=G.dishes.indexOf(id)>=0;var on=G.menu.indexOf(id)>=0;return '<div class="ing-card"><b>'+(r?CAT_IC[r.cat]+' '+r.n:id)+'</b><div class="stk">'+(have?(on?'✅ 已上架':'⚠️ 已掌握未上架'):'❌ 未掌握')+'</div></div>'}).join('')+'</div>';
+  h+='<div class="panel-tip">奖励：奖金 ¥'+cc.bonus+' · 声望 +8'+(cc.done?' · ✅ 已完成':'')+'</div>';
+  h+='<div class="panel-tip">超额 150%（卖出 ≥'+Math.ceil(cc.reqN*1.5)+' 份）额外奖励：天赋点 +1</div>';
+  return h;
 }
 function rdPick(fid){
   if(RD1===fid)RD1=null;
@@ -2280,8 +2497,8 @@ function rdGo(){
   if(hit){
     if(G.dishes.indexOf(hit.id)>=0){
       toast('已掌握：'+hit.n,'gr');SFX.click();
-    }else if(hit.city&&hit.city!==G.city){
-      toast('🌆 异地菜系：「'+hit.n+'」需前往「'+cityName(hit.city)+'」研发','rd');SFX.bad();
+    }else if(!recCityOk(hit)){
+      toast('🌆 异地菜系：「'+hit.n+'」需前往「'+cityName(hit.city)+'」研发，或🚚冷链进口'+cityName(hit.city)+'特产打通供应链','rd');SFX.bad();
     }else if(!rdAvail(hit,G.rdtree)){
       var need=(hit.after||[]).map(function(p){var pr=recById(p);return pr?pr.n:p}).join('、');
       toast('🔒 研发锁：先解锁 '+need,'rd');SFX.bad();
@@ -2319,10 +2536,10 @@ function menuTg(rid){
   if(i>=0)G.menu.splice(i,1);
   else{
     var rr=recById(rid);
-    if(rr&&rr.city&&rr.city!==G.city){toast('🌆 「'+rr.n+'」是「'+cityName(rr.city)+'」特色菜，需迁回该城市才能上架','rd');SFX.bad();return}
+    if(rr&&!recCityOk(rr)){toast('🌆 「'+rr.n+'」是「'+cityName(rr.city)+'」特色菜——迁回该城，或🚚冷链进口'+cityName(rr.city)+'特产打通供应链','rd');SFX.bad();return}
     var mx=curVenueTier().menuMax||8;
     if(G.menu.length>=mx){toast('当前场地菜单最多上架 '+mx+' 道（升级场地可扩容）','rd');return}
-    G.menu.push(rid);
+    G.menu.push(rid);checkChain(); /* v0.19.0 三城一味成就检查 */
   }
   SFX.click();saveGame();renderDayPanel();
 }
@@ -2538,7 +2755,7 @@ function doPrestigeGo(){
   CUSTS.forEach(function(c){if(keepVip[c.id]&&keepVip[c.id].s){G.vipMap[c.id].s=keepVip[c.id].s;G.vipMap[c.id].lvl=vipLvl(c.id)}});
   // v0.13.1 城市和场地跨分店保留
   G.city=keepCity;G.venue=keepVenue;
-  rollWeather();rollEvent();rollQuest();rollChallenge();
+  rollWeather();rollEvent();rollQuest();rollChallenge();rollCityPrices();rollContest();
   saveGame();closeModal();
   toast('🏪 分店开业！收入永久 +'+(p*30)+'%','gold');
   checkLogin();
@@ -2595,6 +2812,104 @@ function startNight(){
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
   NIGHT.timer=setInterval(nightTick,100);
+  stopNightScene();nightSceneTick();
+}
+/* ================= v0.20.0 Canvas 等距夜市街景 ================= */
+var SCENE_RAF=null;
+function stopNightScene(){if(SCENE_RAF){cancelAnimationFrame(SCENE_RAF);SCENE_RAF=null}}
+function nightSceneTick(){
+  if(!NIGHT||!NIGHT.active||!G.gfxScene)return;
+  renderNightScene();
+  SCENE_RAF=requestAnimationFrame(nightSceneTick);
+}
+function renderNightScene(){
+  var cv=$('#nightScene');if(!cv)return;
+  var ctx=cv.getContext('2d');if(!ctx)return;
+  var DPR=Math.min(2,window.devicePixelRatio||1);
+  var W=cv.width=cv.clientWidth*DPR;
+  var H=cv.height=cv.clientHeight*DPR;
+  if(W<10||H<10)return;
+  ctx.clearRect(0,0,W,H);
+  var t=performance.now()/1000;
+  /* 夜空 */
+  var grd=ctx.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,'#120a1f');grd.addColorStop(1,'#0b1426');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+  /* 远处霓虹 */
+  ctx.save();
+  ctx.shadowColor='rgba(34,211,238,.25)';ctx.shadowBlur=30;
+  ctx.fillStyle='rgba(34,211,238,.07)';ctx.fillRect(W*.12,H*.12,50*DPR,22*DPR);
+  ctx.shadowColor='rgba(255,64,255,.25)';ctx.shadowBlur=30;
+  ctx.fillStyle='rgba(255,64,255,.07)';ctx.fillRect(W*.72,H*.18,44*DPR,18*DPR);
+  ctx.restore();
+  /* 等距参数 */
+  var ox=W*.42,oy=H*.62,tw=44*DPR,th=22*DPR;
+  /* 地砖 */
+  for(var ix=-3;ix<=3;ix++){for(var iy=-2;iy<=2;iy++){
+    var x=ox+(ix-iy)*tw*.5,y=oy+(ix+iy)*th*.5;
+    ctx.beginPath();
+    ctx.moveTo(x,y-th*.5);ctx.lineTo(x+tw*.5,y);ctx.lineTo(x,y+th*.5);ctx.lineTo(x-tw*.5,y);ctx.closePath();
+    ctx.fillStyle=((ix+iy)&1)?'rgba(22,22,42,.55)':'rgba(32,32,58,.55)';ctx.fill();
+    ctx.strokeStyle='rgba(100,80,150,.12)';ctx.stroke();
+  }}
+  /* 摊位 */
+  var sx=ox,sy=oy-th*.5;
+  ctx.beginPath();
+  ctx.moveTo(sx,sy-th*1.5);ctx.lineTo(sx+tw*1.2,sy-th*.8);ctx.lineTo(sx,sy+th*.2);ctx.lineTo(sx-tw*1.2,sy-th*.8);ctx.closePath();
+  ctx.fillStyle='#2a2a35';ctx.fill();ctx.strokeStyle='rgba(34,211,238,.3)';ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx+tw*1.2,sy-th*.8);ctx.lineTo(sx+tw*1.2,sy+th*.4);ctx.lineTo(sx,sy+th*1.4);ctx.lineTo(sx,sy+th*.2);ctx.closePath();
+  ctx.fillStyle='#1a1a25';ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(sx-tw*1.2,sy-th*.8);ctx.lineTo(sx-tw*1.2,sy+th*.4);ctx.lineTo(sx,sy+th*1.4);ctx.lineTo(sx,sy+th*.2);ctx.closePath();
+  ctx.fillStyle='#151520';ctx.fill();
+  /* 招牌 glow */
+  ctx.save();
+  ctx.shadowColor='rgba(34,211,238,.6)';ctx.shadowBlur=18;
+  ctx.fillStyle='#22d3ee';ctx.font='bold '+Math.round(11*DPR)+'px sans-serif';ctx.textAlign='center';
+  ctx.fillText('🍜 赛博夜市',sx,sy-th*1.9);
+  ctx.restore();
+  /* 灶台 */
+  var fx=sx+tw*1.7,fy=sy-th*.1;
+  ctx.beginPath();
+  ctx.moveTo(fx,fy-th*.8);ctx.lineTo(fx+tw*.6,fy-th*.4);ctx.lineTo(fx,fy);ctx.lineTo(fx-tw*.6,fy-th*.4);ctx.closePath();
+  ctx.fillStyle='#2d1f1f';ctx.fill();ctx.strokeStyle='rgba(255,100,50,.3)';ctx.stroke();
+  var ck=NIGHT.cooking?NIGHT.cooking.length:0;
+  if(ck>0){
+    var flick=Math.sin(t*10)*.2+.8;
+    ctx.save();
+    ctx.shadowColor='rgba(255,160,40,.8)';ctx.shadowBlur=(14+6*flick)*DPR;
+    ctx.fillStyle='rgba(255,160,40,'+(0.55+0.25*flick)+')';
+    ctx.beginPath();ctx.arc(fx,fy-th*.4,(5+3*flick)*DPR,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    for(var si=0;si<ck;si++){
+      var st=t*2+si*1.3;
+      ctx.fillStyle='rgba(200,200,200,'+Math.max(0,0.3-0.15*(st%1))+')';
+      ctx.beginPath();ctx.arc(fx+Math.sin(st)*4*DPR,fy-th*.9-16*DPR*(st%1),2*DPR,0,Math.PI*2);ctx.fill();
+    }
+  }
+  /* 顾客 */
+  if(NIGHT.queue){
+    NIGHT.queue.slice(0,4).forEach(function(c,i){
+      var cx=fx+tw*.9+i*tw*.95,cy=sy+th*.9;
+      ctx.fillStyle='rgba(0,0,0,.35)';
+      ctx.beginPath();ctx.ellipse(cx,cy+2*DPR,9*DPR,3.5*DPR,0,0,Math.PI*2);ctx.fill();
+      ctx.font=Math.round(18*DPR)+'px sans-serif';ctx.textAlign='center';
+      ctx.fillText(c.e||'👤',cx,cy-4*DPR);
+      var pr=Math.max(0,c.pat/c.patMax),bw=16*DPR,bh=2.5*DPR;
+      ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(cx-bw/2,cy-16*DPR,bw,bh);
+      ctx.fillStyle=pr>.6?'#4ade80':pr>.3?'#facc15':'#f87171';
+      ctx.fillRect(cx-bw/2,cy-16*DPR,bw*pr,bh);
+    });
+  }
+  /* 雨丝 */
+  ctx.save();
+  ctx.strokeStyle='rgba(150,180,255,.14)';ctx.lineWidth=DPR;
+  for(var ri=0;ri<18;ri++){
+    var rx=(W*.06*ri+t*36)%W,ry=(H*.11*(ri%7)+t*72)%H;
+    ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-7*DPR,ry+16*DPR);ctx.stroke();
+  }
+  ctx.restore();
 }
 function spawnGap(){return (3.6/flowMult())*(0.75+Math.random()*.5)}
 /** 生成顾客入队：权重抽类型，售价/耐心落进顾客对象快照 */
@@ -2793,6 +3108,7 @@ function renderNight(){
   $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
   var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
   var sb=document.querySelector('[data-act="nspeed"]');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
+  var gb=document.querySelector('[data-act="gfxTg"]');if(gb)gb.textContent=G.gfxScene?'🎨 场景':'🎨 简约';
 }
 function updateNightTick(){
   if(!NIGHT)return;
@@ -2965,6 +3281,7 @@ function copyCard(){
 }
 /** 收摊结算：S/A/B/C 评级/悬赏/里程碑/天赋点掉落/连击与人气菜展示 */
 function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
+  stopNightScene();
   NIGHT.active=false;
   // v0.13.1 哈尔滨 allK 全收益乘区
   var CB=cityBuff();
@@ -3019,6 +3336,7 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   if(ms){G.miles.push(ms.day);G.money+=ms.money;G.rep=Math.min(100,G.rep+ms.rep);if(ms.tp)G.tp=(G.tp||0)+ms.tp;
     msTxt='<div class="settle-line"><span>'+ms.ic+' 里程碑 · '+ms.n+'</span><b style="color:var(--yl)">+¥'+fmt(ms.money)+(ms.rep?' · 声望 +'+ms.rep:'')+(ms.tp?' · 天赋点 +'+ms.tp:'')+'</b></div>';
     toast(ms.ic+' 里程碑达成：'+ms.n+'！','gold');SFX.bigcoin()}
+  checkContest(); /* v0.19.0 夜市争霸赛结算（在 saveLife 前写入结果） */
   saveLife();saveGame();
   $('#settleBody').innerHTML=
     '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
@@ -3075,8 +3393,11 @@ function nextDay(){
   G.day=nd;G.dayBuy=0; /* v0.17.2 采购额按天重置，报表成本口径与托管店一致（采购+租金） */
   if(nd>7)checkAch('d7');
   rollWeather();rollFave();rollEvent();rollQuest();
+  rollCityPrices(); /* v0.19.0 每日城市物价波动 */
+  rollContest();    /* v0.19.0 每周夜市争霸赛 */
   autoRecruit(); /* v0.16.0 店长每日清晨免费补 1 人（在 saveGame 前，随档持久化） */
   autoShopDaily(); /* v0.17.0 托管店每日自动经营结算（同上，随档持久化） */
+  arriveLogi(); /* v0.19.0 冷链在途订单到货入库（在 saveGame 前随档持久化） */
   saveGame();
   renderDay();
   if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid)+(rentPull?'（从分店调拨 ¥'+fmt(rentPull)+'）':''),'rd');
@@ -3147,6 +3468,9 @@ document.addEventListener('click',function(e){
       document.querySelectorAll('#tabs .tab').forEach(function(t){
         t.classList.toggle('on',t.dataset.id===TAB)});break;
     case 'buy':buyIng(id,+el.dataset.n||1);break;
+    case 'logiOrder':logiOrder(id,+el.dataset.n||1);break;
+    case 'logiUp':logiUp();break;
+    case 'sellIng':sellIng(id,+el.dataset.n||1);break;
     case 'rdPick':rdPick(id);break;
     case 'rdGo':rdGo();break;
     case 'menuTg':menuTg(id);break;
@@ -3165,7 +3489,7 @@ document.addEventListener('click',function(e){
     case 'unassignMgr':unassignMgr(id);break;
     case 'buyUp':buyUp(id);break;
     case 'buySkin':buySkin(id);break;
-    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();rollChallenge();saveGame();closeModal();renderDay();checkLogin();break;
+    case 'pickDiff':G=freshG(id);rollWeather();rollEvent();rollQuest();rollChallenge();rollCityPrices();rollContest();saveGame();closeModal();renderDay();checkLogin();break;
     case 'startGo':chooseDiff();break;
     case 'shareCard':shareCard();break;
     case 'saveCard':saveCard();break;
@@ -3180,6 +3504,7 @@ document.addEventListener('click',function(e){
     case 'startNight':startNight();break;
     case 'npause':togglePause();break;
     case 'nspeed':toggleSpeed();break;
+    case 'gfxTg':G.gfxScene=G.gfxScene?0:1;saveGame();renderNight();break;
     case 'talents':SFX.click();offerTalents();break;
     case 'pickTalent':pickTalent(id);break;
     case 'rerollTal':rerollTalents();break;
