@@ -319,7 +319,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.21.0 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.21.1 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -2251,26 +2251,62 @@ function panelUps(){  var h=UPS.map(function(u){
   return h;
 }
 /* ================= v0.13.1 经营地图面板 ================= */
+/* v0.21.1 地图优化：物价趋势/分店数/预估收益 */
+function cityPriceTrend(cid){
+  if(!G||!G.cityPriceDelta||!G.cityPriceDelta[cid])return '→';
+  var deltas=Object.values(G.cityPriceDelta[cid]);
+  if(!deltas.length)return '→';
+  var avg=deltas.reduce(function(a,b){return a+b},0)/deltas.length;
+  if(avg>0.05)return '↑';if(avg<-0.05)return '↓';return '→';
+}
+function cityShopCount(cid){
+  if(!G||!G.shops)return 0;
+  return G.shops.filter(function(s){return s.city===cid}).length;
+}
+function estDailyIncome(cid,tierId,variantId){
+  if(!G||!G.menu||!G.menu.length)return 0;
+  var t=VENUE_TIERS.find(function(x){return x.id===tierId});if(!t)return 0;
+  var arr=VENUE_VARIANTS[tierId]||[];
+  var v=arr.find(function(x){return x.id===variantId})||arr[0];if(!v)return 0;
+  var c=CITIES.find(function(x){return x.id===cid});if(!c)return 0;
+  var avgP=0;
+  G.menu.forEach(function(did){var r=recById(did);if(r)avgP+=dishPrice(r)});
+  avgP=avgP/G.menu.length;
+  var flow=t.flow*(c.buff.flow||1)*(diff().flow||1);
+  var payK=t.payK*(c.buff.payK||1)*(diff().payK||1);
+  var gross=avgP*flow*payK*15;
+  var rent=Math.round(t.rent*(diff().rent||1));
+  return Math.max(0,Math.round(gross-rent));
+}
 function panelMap(){
   var CC=curCity(),VT=curVenueTier(),VV=curVenueVar();
   /* SVG 中国简化轮廓（640×400 viewBox，抽象为多边形） */
-  var svg='<svg viewBox="0 0 640 400" style="width:100%;max-height:380px;background:linear-gradient(180deg,#0a1420,#0d1a2a);border-radius:8px;border:1px solid var(--dim)" xmlns="http://www.w3.org/2000/svg">'+
+  var svg='<svg viewBox="0 0 640 400" style="width:100%;max-height:400px;background:linear-gradient(180deg,#0a1420,#0d1a2a);border-radius:8px;border:1px solid var(--dim)" xmlns="http://www.w3.org/2000/svg">'+
     '<defs><radialGradient id="pulse" cx="50%" cy="50%" r="50%">'+
-    '<stop offset="0%" style="stop-color:#ffd700;stop-opacity:.8"/><stop offset="100%" style="stop-color:#ffd700;stop-opacity:0"/></radialGradient></defs>'+
+    '<stop offset="0%" style="stop-color:#ffd700;stop-opacity:.8"/><stop offset="100%" style="stop-color:#ffd700;stop-opacity:0"/></radialGradient>'+
+    '<filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
     /* 简化中国轮廓（粗略） */
     '<path d="M 80,80 L 200,50 L 320,40 L 420,55 L 540,80 L 600,130 L 590,200 L 560,260 L 510,310 L 430,340 L 340,360 L 250,355 L 160,330 L 100,280 L 70,200 Z" '+
     'fill="#0e1f33" stroke="#1a3a5a" stroke-width="1.5" opacity=".7"/>';
   /* 城市标记：点击即迁都，全部可选 */
   CITIES.forEach(function(c){
-    var visited=isCityUnlocked(c.id),isCur=CC.id===c.id;
-    var col=isCur?'#ffd700':'#00ffcc';
+    var visited=isCityUnlocked(c.id),isCur=CC.id===c.id,shopN=cityShopCount(c.id);
+    var trend=cityPriceTrend(c.id),trendCol=trend==='↑'?'#f87171':trend==='↓'?'#4ade80':'#94a3b8';
+    var col=isCur?'#ffd700':shopN>0?'#00ffcc':'#00aaff';
     var op=isCur?1:(visited?0.95:0.7);
+    var r=isCur?12:8;
     if(isCur){
-      svg+='<circle cx="'+c.x+'" cy="'+c.y+'" r="18" fill="url(#pulse)"><animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite"/></circle>';
+      svg+='<circle cx="'+c.x+'" cy="'+c.y+'" r="20" fill="url(#pulse)"><animate attributeName="r" values="16;26;16" dur="2s" repeatCount="indefinite"/></circle>';
+    }
+    /* 分店标记 */
+    if(shopN>0){
+      svg+='<circle cx="'+c.x+'" cy="'+c.y+'" r="'+(r+4)+'" fill="none" stroke="#00ffcc" stroke-width="2" stroke-dasharray="4,2" opacity=".6"/>';
     }
     svg+='<g data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer" opacity="'+op+'">'+
-      '<circle cx="'+c.x+'" cy="'+c.y+'" r="'+(isCur?9:6)+'" fill="'+col+'" stroke="'+(isCur?'#fff':'#0a1420')+'" stroke-width="1.5"/>'+
-      '<text x="'+(c.x)+'" y="'+(c.y-14)+'" text-anchor="middle" fill="'+(isCur?'#ffd700':'#00ffcc')+'" font-size="'+(isCur?13:11)+'" font-weight="'+(isCur?'bold':'normal')+'">'+c.n+'</text>'+
+      '<circle cx="'+c.x+'" cy="'+c.y+'" r="'+r+'" fill="'+col+'" stroke="'+(isCur?'#fff':'#0a1420')+'" stroke-width="'+(isCur?2.5:1.5)+'"/>'+
+      '<text x="'+(c.x)+'" y="'+(c.y-18)+'" text-anchor="middle" fill="'+(isCur?'#ffd700':'#00ffcc')+'" font-size="'+(isCur?15:12)+'" font-weight="'+(isCur?'bold':'normal')+'">'+c.n+'</text>'+
+      '<text x="'+(c.x+16)+'" y="'+(c.y-8)+'" text-anchor="start" fill="'+trendCol+'" font-size="11">'+trend+'</text>'+
+      (shopN>0?'<text x="'+(c.x)+'" y="'+(c.y+r+12)+'" text-anchor="middle" fill="#00ffcc" font-size="10">🏪×'+shopN+'</text>':'')+
       '</g>';
   });
   svg+='</svg>';
@@ -2279,34 +2315,38 @@ function panelMap(){
   var curInfo='<div class="panel-tip" style="margin-top:10px">📍 当前：<b style="color:var(--yl)">'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+'<br><span style="color:var(--cy)">'+CC.dsc+'</span> · <span style="color:var(--dim)">'+VV.dsc+'</span><br><span style="color:var(--gr);font-size:12px">✓ 所有城市/场地可自由切换，仅按日租扣费</span></div>';
 
   /* 城市列表（点击直接迁都） */
-  var cityList='<div class="panel-tip" style="margin-top:14px">🏙️ 城市列表（10 座可选 · 已到访 '+LIFE.citiesUnlocked.length+'）</div>'+
+  var cityList='<div class="panel-tip" style="margin-top:14px">🏙️ 城市列表（10 座可选 · 已到访 '+LIFE.citiesUnlocked.length+' · 箭头=物价趋势）</div>'+
     '<div class="vip-list">'+CITIES.map(function(c){
-      var visited=isCityUnlocked(c.id),isCur=CC.id===c.id;
+      var visited=isCityUnlocked(c.id),isCur=CC.id===c.id,shopN=cityShopCount(c.id);
+      var trend=cityPriceTrend(c.id),trendCol=trend==='↑'?'#f87171':trend==='↓'?'#4ade80':'#94a3b8';
+      var est=estDailyIncome(c.id,G.venue.tier,G.venue.variant);
       var stat=isCur?'<b style="color:var(--yl)">📍 当前</b>':
                 visited?'<span style="color:var(--gr)">✓ 已到访</span>':
                 '<span style="color:var(--cy)">点击前往</span>';
       return '<div class="vip-row" data-act="cityGo" data-id="'+c.id+'" style="cursor:pointer" role="button" tabindex="0">'+
-        '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b><br><span style="font-size:11px;color:var(--cy)">🍜 '+cityDishes(c.id).map(function(r){return r.n}).join('、')+'</span></span>'+
+        '<span>'+(isCur?'📍':'🌆')+' <b>'+c.n+'</b> <span style="color:'+trendCol+'">'+trend+'</span>'+(shopN>0?' <span style="color:#00ffcc;font-size:11px">🏪×'+shopN+'</span>':'')+'<br><span style="font-size:11px;color:var(--cy)">🍜 '+cityDishes(c.id).map(function(r){return r.n}).join('、')+'</span></span>'+
         '<span style="font-size:11px;color:var(--dim)">'+c.dsc+'</span>'+
-        '<span style="font-size:11px">'+stat+'<br><span class="btn sm yl" data-act="shopOpenAsk" data-id="'+c.id+'" style="padding:3px 8px;font-size:11px;margin-top:3px">🏪 开店</span></span></div>';
+        '<span style="font-size:11px">'+stat+'<br><span style="color:var(--yl);font-size:11px">预估 ¥'+fmt(est)+'/晚</span><br><span class="btn sm yl" data-act="shopOpenAsk" data-id="'+c.id+'" style="padding:3px 8px;font-size:11px;margin-top:3px">🏪 开店</span></span></div>';
     }).join('')+'</div>';
 
   /* 场地矩阵（5 档 × N 变体，点击直接搬迁） */
-  var venueList='<div class="panel-tip" style="margin-top:14px">🏪 经营场地（自由切换 · 日租是唯一成本）</div>'+
+  var venueList='<div class="panel-tip" style="margin-top:14px">🏪 经营场地（自由切换 · 日租是唯一成本 · 预估收益按当前菜单）</div>'+
     VENUE_TIERS.map(function(t){
       var arr=VENUE_VARIANTS[t.id]||[];
       var tOwned=arr.some(function(v){return isVenueOwned(t.id,v.id)});
       var tCur=G.venue.tier===t.id;
+      var est=estDailyIncome(G.city,t.id,arr[0].id);
       var head='<div style="margin-top:8px;padding:6px 10px;background:rgba(0,255,204,.05);border-left:3px solid '+(tCur?'var(--yl)':(tOwned?'var(--gr)':'var(--cy)'))+';border-radius:4px">'+
-        '<b>'+t.n+'</b> <span style="color:var(--dim);font-size:11px">日租 ¥'+fmt(Math.round(t.rent*(diff().rent||1)))+' · 客流 ×'+t.flow+' · 客单 ×'+t.payK+' · 菜单上限 '+t.menuMax+'</span>'+
+        '<b>'+t.n+'</b> <span style="color:var(--dim);font-size:11px">日租 ¥'+fmt(Math.round(t.rent*(diff().rent||1)))+' · 客流 ×'+t.flow+' · 客单 ×'+t.payK+' · 菜单上限 '+t.menuMax+' · <span style="color:var(--yl)">预估 ¥'+fmt(est)+'/晚</span></span>'+
         '</div>';
-      var variants='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-top:6px">'+
+      var variants='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-top:6px">'+
         arr.map(function(v){
           var isCurV=G.venue.tier===t.id&&G.venue.variant===v.id;
+          var vest=estDailyIncome(G.city,t.id,v.id);
           return '<div class="skin-card'+(isCurV?' cur':'')+'" data-act="venueGo" data-id="'+t.id+':'+v.id+'" style="padding:8px" role="button" tabindex="0">'+
             '<div style="font-size:12px;font-weight:bold">'+(isCurV?'📍':'')+v.n+'</div>'+
             '<div style="font-size:11px;color:var(--dim);margin-top:2px">'+v.dsc+'</div>'+
-            '<div style="font-size:11px;margin-top:4px;color:'+(isCurV?'var(--yl)':'var(--cy)')+'">'+(isCurV?'当前位置':'点击切换')+'</div>'+
+            '<div style="font-size:11px;margin-top:4px;color:'+(isCurV?'var(--yl)':'var(--cy)')+'">'+(isCurV?'当前位置':'预估 ¥'+fmt(vest)+'/晚')+'</div>'+
             '</div>';
         }).join('')+'</div>';
       return head+variants;
