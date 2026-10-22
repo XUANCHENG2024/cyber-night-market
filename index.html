@@ -315,7 +315,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.17.4 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.18.1 · 2026-10-22</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -1019,7 +1019,7 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
   weather:'sunny',quest:null,freeRd:true,prestiges:0,total:{served:0,earned:0,spec:0,rdTry:0},over:null,
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
   priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip,
-  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0};
+  city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0,faves:[],miles:[]};
   var s0=mkShop('s1','成都·1号店',true,'chengdu','stall','main');s0.money=g.money;s0.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};g.shops=[s0];
   grantAchDishes(g); // 成就稀有食谱随档保留（成就为账号级进度）
   return g}
@@ -1105,6 +1105,11 @@ function sanitizeSave(d){
     var tal={};TALENTS.forEach(function(t){var v=Math.round(+((d.talents||{})[t.id])||0);if(v>0)tal[t.id]=clamp(v,0,99)});
     g.talents=tal;
     g.weather=WEATHERS.some(function(w){return w.id===d.weather})?d.weather:'sunny';
+    g.faves=(function(){ /* v0.18.1 人气菜数组白名单 + 旧档 fave 字符串迁移 */
+      var src=Array.isArray(d.faves)?d.faves:(d.fave!==undefined?[d.fave]:[]),out=[];
+      src.forEach(function(x){if(x&&RECIPES.some(function(r){return r.id===x})&&out.indexOf(x)<0)out.push(x)});
+      return out})();
+    g.miles=(Array.isArray(d.miles)?d.miles:[]).map(function(x){return Math.round(+x||0)}).filter(function(x,i,a){return MILESTONES.some(function(m){return m.day===x})&&a.indexOf(x)===i}); /* v0.18.1 里程碑白名单+去重 */
     g.freeRd=!!d.freeRd;
     g.prestiges=clamp(Math.round(+d.prestiges||0),0,999);
     g.total={served:clamp(Math.round(+(d.total&&d.total.served)||0),0,1e9),
@@ -1810,6 +1815,20 @@ function resetGo(){
 
 /* ================= 天气 / 悬赏 ================= */
 function rollWeather(){G.weather=choice(WEATHERS).id}
+/* ================= 生涯里程碑（v0.18.1 按天数一次性奖励，参考 Vampire Survivors 阶段目标） ================= */
+var MILESTONES=[
+  {day:7,ic:'📅',n:'开张一周',money:300,rep:5,tp:0},
+  {day:30,ic:'🌙',n:'月度老摊',money:1500,rep:10,tp:1},
+  {day:100,ic:'🏆',n:'夜市传奇',money:8000,rep:20,tp:2}
+];
+function rollFave(){ /* v0.18.1 每日人气菜随连锁扩展：基础 1 道，连锁≥2 家 +1、≥5 家 +1，从已上架菜单随机，卖出小费×1.5 */
+  var m=G.menu||[];if(!m.length){G.faves=[];return}
+  var n=1+((G.prestiges||0)>=2?1:0)+((G.prestiges||0)>=5?1:0);
+  n=Math.min(n,m.length);
+  var pool=m.slice(),fs=[];
+  for(var i=0;i<n&&pool.length;i++){fs.push(pool.splice((Math.random()*pool.length)|0,1)[0])}
+  G.faves=fs;
+}
 function rollEvent(){
   var pool=EVENTS.filter(function(e){return e.id!==(G.event&&G.event.id)});
   G.event=Math.random()<.6?{id:choice(pool).id}:null;
@@ -1914,6 +1933,7 @@ function renderDay(){
       '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div>'+
       '<div class="btn mg" data-act="tab" data-id="shops" style="margin-top:6px;padding:8px 10px;font-size:12px">🏪 我的店铺（'+G.shops.length+' 家）—— 当前「'+esc(activeShop().n)+'」</div></div>'+
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
+    (G.faves&&G.faves.length?(function(){var frs=(G.faves||[]).map(function(f){return recById(f)}).filter(function(r){return r});return frs.length?'<div class="qst" style="border-left:3px solid var(--mg)">🔥 今日人气菜：<b>'+frs.map(function(r){return r.n}).join('、')+'</b>（卖出小费 ×1.5）</div>':''})():'')+ /* v0.18.1 人气菜提示（多道随连锁扩展） */
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
     (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
@@ -2546,7 +2566,7 @@ function startNight(){
   }
   NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null,
-    critN:0,tipN:0,specN:0,begN:0,dishSet:new Set()};
+    critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set()};
   saveGame();
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
@@ -2600,7 +2620,7 @@ function loseCust(c){
   if(c.sp){var spd=spById(c.sp);if(spd&&spd.pen!==undefined)pen=spd.pen}
   if(c.noRep)pen=0;
   if((G.talents.shield||0)>0&&Math.random()<.5)pen=0;
-  G.rep=Math.max(0,G.rep-pen);NIGHT.lostN++;
+  G.rep=Math.max(0,G.rep-pen);NIGHT.lostN++;NIGHT.combo=0; /* v0.18.0 气跑清空连击 */
   if(pen>0)toast(c.e+' '+c.n+' 气跑了！声望 -'+pen,'rd');
   else toast(c.e+' '+c.n+' 离开了（未扣声望）','rd');
   renderNight();renderTop();
@@ -2673,10 +2693,14 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   var critCh=Math.min(.45,.15*(G.talents.crit||0)+(CB.critK||0));
   var crit=Math.random()<critCh;
   if(crit){base*=2;NIGHT.critN++}
+  NIGHT.combo=(NIGHT.combo||0)+1;if(NIGHT.combo>(NIGHT.bestCombo||0))NIGHT.bestCombo=NIGHT.combo; /* v0.18.0 连击计数 */
+  if(NIGHT.combo%5===0)toast('🔥 连击 x'+NIGHT.combo+'！小费加成 +'+Math.round(Math.min(50,NIGHT.combo*4))+'%','gold');
   var ap=avgPriceMod();
   var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura;
   if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
+  tip*=1+Math.min(.5,(NIGHT.combo||0)*.04); /* v0.18.0 连击小费加成（参考 Cooking Madness combo） */
+  if(G.faves&&G.faves.indexOf(k.dish)>=0)tip*=1.5; /* v0.18.1 人气菜小费×1.5（多道） */
   var gain=Math.round(base+tip);
   G.money+=gain;NIGHT.earn+=gain;
   NIGHT.tipN+=Math.round(tip);
@@ -2949,13 +2973,31 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   // 常客面板入口
   var vipTxt='';var vipBest=0;CUSTS.forEach(function(c){if(G.vipMap&&G.vipMap[c.id]){var l=vipLvl(c.id);if(l>vipBest)vipBest=l}});
   if(vipBest>0){vipTxt='<div class="settle-line"><span>❤️ 常客最高等级</span><b>Lv.'+vipBest+'</b></div>'}
+  /* v0.18.0 夜晚评级（参考关卡制三星评分）：S/A 给声望奖励 */
+  var gr=NIGHT.earn/Math.max(1,60+G.day*28);
+  var grade=gr>=2?'S':gr>=1.3?'A':gr>=.7?'B':'C';
+  var gradeCol=grade==='S'?'var(--yl)':grade==='A'?'var(--cy)':'var(--dim)';
+  if(grade==='S')G.rep=Math.min(100,G.rep+6);
+  else if(grade==='A')G.rep=Math.min(100,G.rep+3);
+  /* v0.18.1 S 级天赋点掉落（30% 概率，参考 roguelike 高分奖励） */
+  var gradeTp=0;
+  if(grade==='S'&&Math.random()<.3){gradeTp=1;G.tp=(G.tp||0)+1;toast('✨ S 级评价！额外掉落天赋点 ×1','gold')}
+  /* v0.18.1 生涯里程碑（按天数一次性领取，随档持久化） */
+  if(!Array.isArray(G.miles))G.miles=[];
+  var msTxt='';
+  var ms=MILESTONES.find(function(m){return m.day===G.day&&G.miles.indexOf(m.day)<0});
+  if(ms){G.miles.push(ms.day);G.money+=ms.money;G.rep=Math.min(100,G.rep+ms.rep);if(ms.tp)G.tp=(G.tp||0)+ms.tp;
+    msTxt='<div class="settle-line"><span>'+ms.ic+' 里程碑 · '+ms.n+'</span><b style="color:var(--yl)">+¥'+fmt(ms.money)+(ms.rep?' · 声望 +'+ms.rep:'')+(ms.tp?' · 天赋点 +'+ms.tp:'')+'</b></div>';
+    toast(ms.ic+' 里程碑达成：'+ms.n+'！','gold');SFX.bigcoin()}
   saveLife();saveGame();
   $('#settleBody').innerHTML=
     '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
+    '<div class="settle-line"><span>🏅 今晚评级</span><b style="color:'+gradeCol+'">'+grade+(grade==='S'?('（声望+6'+(gradeTp?' · ✨天赋点+1':'')+'）'):grade==='A'?'（声望+3）':'')+'</b></div>'+
+    '<div class="settle-line"><span>🔥 最高连击</span><b>x'+(NIGHT.bestCombo||0)+'</b></div>'+
     '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
-    chTxt+vipTxt+rentTxt+
+    chTxt+vipTxt+rentTxt+msTxt+
     '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
     (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
   $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>'+
@@ -3001,7 +3043,7 @@ function nextDay(){
   }
   G.day=nd;G.dayBuy=0; /* v0.17.2 采购额按天重置，报表成本口径与托管店一致（采购+租金） */
   if(nd>7)checkAch('d7');
-  rollWeather();rollEvent();rollQuest();
+  rollWeather();rollFave();rollEvent();rollQuest();
   autoRecruit(); /* v0.16.0 店长每日清晨免费补 1 人（在 saveGame 前，随档持久化） */
   autoShopDaily(); /* v0.17.0 托管店每日自动经营结算（同上，随档持久化） */
   saveGame();
