@@ -174,6 +174,9 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
 #scr-night{position:relative}
 .night-hud{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 #nightStat{font-size:11px;color:var(--dim);white-space:nowrap} /* v0.17.4 夜晚实时接待/流失计数 */
+/* v0.22.3 AI Director 客流温度条：50% = 中性，右=加压，左=减压 */
+#dirWrap{flex:0 0 56px;width:56px;height:8px;background:var(--pan2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+#dirBar{display:block;height:100%;width:50%;border-radius:3px;background:linear-gradient(90deg,var(--cy),var(--mg));transition:width .35s ease,background .35s ease}
 #nightClock{font-size:22px;font-weight:900;color:var(--cy);min-width:64px;font-variant-numeric:tabular-nums}
 #nightClock.warn{color:var(--rd);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.35}}
@@ -319,7 +322,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.21.1 · 2026-10-22</div>
+    <div class="game-ver">内测版 v0.22.4 · 2026-10-23</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -350,6 +353,7 @@ body[data-skin=gold]{--bg:#171205;--pan:#241b0a;--pan2:#2e2410;--line:#4a3a1a;--
       <div id="nightClock">60s</div>
       <div id="timebar"><i></i></div>
       <div id="nightStat">✅ 0 · ❌ 0</div>
+      <div id="dirWrap" title="客流温度：AI 正在根据你的表现调整夜间难度（高=加压，低=减压）" role="img" aria-label="夜间难度温度"><i id="dirBar"></i></div>
       <div id="nightEarn">¥0</div>
     </div>
     <canvas id="nightScene"></canvas>
@@ -418,11 +422,14 @@ const SFX={ctx:null,
   hire(){[392,523,659].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.08,'triangle',.05)},i*70)})},
   upgrade(){[440,554,659,880].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.09,'square',.04)},i*60)})},
   quest(){[659,784,1046,1318].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.1,'triangle',.055)},i*80)})},
+  combo(n){var f=660*(1+Math.min(20,n)*.06);this.beep(f,.07,'square',.04,f*1.25)}, /* v0.22.0 连击音效逐级升调 */
   cook(){this.beep(330,.09,'square',.05,220)},
   talent(){[1046,1318,1568,2093].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.12,'sine',.05)},i*90)})},
   gameover(){[392,330,262,196].forEach(function(f,i){setTimeout(function(){SFX.beep(f,.25,'sawtooth',.06)},i*220)})},
   whoosh(){this.beep(160,.5,'sawtooth',.045,520)},
 };
+/* v0.22.0 触觉反馈：关键节点轻微震动（不支持的设备静默降级） */
+function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
 
 /* ================= BGM 引擎（Am-F-C-G · 88BPM 程序化合成） ================= */
 const BGM={
@@ -1025,7 +1032,7 @@ function showLeaderboard(){
 const SAVE_KEY='cyberNightMarket_v1',LIFE_KEY='cyberNightMarket_life';
 let G=null,NIGHT=null,TAB='buy',RD1=null,RD2=null;
 let syncPending=null; // 同步冲突弹窗暂存的导入数据
-let LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0,citiesUnlocked:['chengdu'],venuesOwned:['stall:main']},ACH={};
+let LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0,citiesUnlocked:['chengdu'],venuesOwned:['stall:main'],ch:0,chPend:0},ACH={};
 
 const DIFFS=[
   {id:'easy',  n:'😇 休闲', ic:'🌱', d:'起始 ¥500 · 租金减半 · 客流 +20%', money:500, rent:.5, flow:1.2, price:.8},
@@ -1050,10 +1057,23 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
 
 /* ================= 存档 ================= */
 /** 持久化进度到 localStorage：先 syncShop 写回活跃店，G.over 死档拦截 */
-function saveGame(){try{if(G&&!G.over){syncShop();G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G))}}catch(e){}
+function saveGame(){try{if(G&&!G.over){syncShop();G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G));checkChapter();saveBaks()}}catch(e){}
   SYNC.mirrorSoon()}
 function saveLife(){try{localStorage.setItem(LIFE_KEY,JSON.stringify({life:LIFE,ach:ACH}))}catch(e){}
   SYNC.mirrorSoon()}
+/* ================= v0.22.0 三槽轮换存档备份 =================
+ * 主档每次写入后按 30s 节流追加到 bak 槽（保留最新 3 份，新→旧）。
+ * 主档 JSON 损坏 / 清洗失败时，loadGame 按新→旧自动恢复备份并置 LOAD_BAK 标记。 */
+var BAK_KEY='cyberNightMarket_baks',BAK_TS=0,LOAD_BAK=false;
+function saveBaks(){
+  try{
+    var now=Date.now();if(now-BAK_TS<30000)return;BAK_TS=now;
+    var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;
+    var arr=[];try{var a=JSON.parse(localStorage.getItem(BAK_KEY)||'[]');if(Array.isArray(a))arr=a}catch(e){}
+    arr.unshift(raw);arr=arr.slice(0,3);
+    localStorage.setItem(BAK_KEY,JSON.stringify(arr));
+  }catch(e){}
+}
 function loadLife(){
   try{
     var raw=localStorage.getItem(LIFE_KEY);if(!raw)return;
@@ -1064,6 +1084,8 @@ function loadLife(){
           bestDay:clamp(Math.round(+d.life.bestDay||0),0,1e9),
           specSeen:(d.life.specSeen&&typeof d.life.specSeen==='object')?d.life.specSeen:{},
           chDone:clamp(Math.round(+d.life.chDone||0),0,999),
+          ch:clamp(Math.round(+d.life.ch||0),0,99),
+          chPend:clamp(Math.round(+d.life.chPend||0),0,1e9),
           citiesUnlocked:(function(){
             var arr=Array.isArray(d.life.citiesUnlocked)?d.life.citiesUnlocked:[];
             arr=arr.filter(function(id){return CITIES.some(function(c){return c.id===id})});
@@ -1294,10 +1316,19 @@ function sanitizeSave(d){
   }catch(e){return null}
 }
 function loadGame(){
+  var g=null;
+  try{var raw=localStorage.getItem(SAVE_KEY);if(raw)g=sanitizeSave(JSON.parse(raw))}catch(e){g=null}
+  if(g)return g;
+  /* v0.22.0 主档损坏 → 三槽备份按新→旧自动恢复 */
   try{
-    var raw=localStorage.getItem(SAVE_KEY);if(!raw)return null;
-    return sanitizeSave(JSON.parse(raw));
-  }catch(e){return null}
+    var arr=JSON.parse(localStorage.getItem(BAK_KEY)||'[]');
+    if(Array.isArray(arr)){
+      for(var i=0;i<arr.length;i++){
+        try{var b=sanitizeSave(JSON.parse(arr[i]));if(b){LOAD_BAK=true;return b}}catch(e){}
+      }
+    }
+  }catch(e){}
+  return null;
 }
 
 /* ================= 同步中心（移动端数据可靠性 + 跨设备迁移） =================
@@ -1438,7 +1469,9 @@ const SYNC={
       var m={served:Math.max(+a.served||0,+b.served||0),
              earned:Math.max(+a.earned||0,+b.earned||0),
              brands:Math.max(+a.brands||0,+b.brands||0),
-             bestDay:Math.max(+a.bestDay||0,+b.bestDay||0)};
+             bestDay:Math.max(+a.bestDay||0,+b.bestDay||0),
+             ch:Math.max(+a.ch||0,+b.ch||0),
+             chPend:Math.max(+a.chPend||0,+b.chPend||0)};
       var ach={};
       [cur.ach||{},parsedLife.ach||{}].forEach(function(src,k){
         ACHS.forEach(function(a){if(src[a.id])ach[a.id]=1});
@@ -1568,6 +1601,7 @@ function showCareer(){
   var rows=[
     ['🏆 累计接待顾客', fmt(LIFE.served)+' 位'],
     ['💰 生涯累计营收', '¥'+fmt(LIFE.earned)],
+    ['📜 生涯章节', (LIFE.ch>=CHAPTERS.length?'👑 七章全通 · 夜市传奇':'第'+(LIFE.ch+1)+'章 · '+CHAPTERS[LIFE.ch].n)+(LIFE.chPend>0?'（待领 ¥'+fmt(LIFE.chPend)+'）':'')],
     ['🌙 单晚最佳营收', '¥'+fmt(LIFE.bestDay)],
     ['🏪 历史最多分店', LIFE.brands+' 家'],
     ['🏅 成就解锁', ACHS.filter(function(a){return ACH[a.id]}).length+' / '+ACHS.length],
@@ -1820,6 +1854,7 @@ function checkLogin(){
 /** 读档进入主界面：离线收益结算 + 未决抉择恢复 + 渲染必读字段兜底 */
 function continueGame(){
   if(!G){var s=loadGame();if(!s){toast('没有找到存档','rd');return}G=s}
+  if(LOAD_BAK){LOAD_BAK=false;toast('⚠️ 主存档已损坏，已自动恢复最近备份','rd')}
   if(!G.quest)rollQuest();
   var modalShown=false;
   var offlineMin=Math.floor((Date.now()-G.lastTs)/60000);
@@ -1866,7 +1901,7 @@ function askReset(){
 function resetGo(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(LIFE_KEY)}catch(e){}
   SYNC.clearMirror();
-  G=null;LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0,citiesUnlocked:['chengdu'],venuesOwned:['stall:main']};ACH={};
+  G=null;LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0,citiesUnlocked:['chengdu'],venuesOwned:['stall:main'],ch:0,chPend:0};ACH={};
   closeModal();refreshMenuContinue();renderMenuLife();
   toast('🗑️ 存档已清除','rd');
 }
@@ -1901,6 +1936,101 @@ function rollQuest(){
   else if(tpl[0]==='sell'){x=8+d;rew=tpl[2]+d*8}
   else{x=100+d*30;rew=tpl[2]+d*10}
   G.quest={k:tpl[0],txt:tpl[1].replace('{x}',x),x:x,rew:rew,done:false};
+}
+/* ================= 生涯章节系统（v0.22.0） =================
+ * 7 章 × 3 目标递进（营收→菜品→连锁→城市→稀有食谱），账号级 LIFE.ch 持久化。
+ * 达标仅累计「待领取」奖励（LIFE.chPend），由玩家在白天面板手动领取入账——
+ * 避免自动发钱污染存档与精确金额断言；无进行中棋局时奖励保留待领。 */
+const CHAPTERS=[
+ {ic:'🌱',n:'初出茅庐',rew:200, goals:[['earned','生涯累计营收 ¥',800],['served','生涯接待顾客',40],['dishes','本档收集菜品',3]]},
+ {ic:'🍳',n:'摊位熟手',rew:400, goals:[['bestDay','单晚最佳营收 ¥',400],['menu','本档菜单菜品',5],['earned','生涯累计营收 ¥',3000]]},
+ {ic:'👥',n:'声名鹊起',rew:800, goals:[['served','生涯接待顾客',200],['bestDay','单晚最佳营收 ¥',900],['dishes','本档收集菜品',8]]},
+ {ic:'🏪',n:'开疆拓土',rew:1500,goals:[['chain','连锁重开次数',1],['cities','解锁城市',3],['earned','生涯累计营收 ¥',15000]]},
+ {ic:'🏬',n:'连锁崛起',rew:3000,goals:[['brands','历史最多分店',2],['bestDay','单晚最佳营收 ¥',2000],['dishes','本档收集菜品',14]]},
+ {ic:'🌃',n:'名震十城',rew:6000,goals:[['cities','解锁城市',6],['rep','当前声望',80],['earned','生涯累计营收 ¥',60000]]},
+ {ic:'👑',n:'夜市传奇',rew:12000,goals:[['brands','历史最多分店',4],['rare','本档稀有食谱',2],['earned','生涯累计营收 ¥',150000]]}
+];
+/** 章节目标当前值（k: 目标维度，混合生涯累计与当前档进度） @param {string} k @returns {number} */
+function chGoalVal(k){
+  switch(k){
+    case 'earned':return LIFE.earned||0;
+    case 'served':return LIFE.served||0;
+    case 'bestDay':return LIFE.bestDay||0;
+    case 'brands':return LIFE.brands||0;
+    case 'cities':return (LIFE.citiesUnlocked||[]).length;
+    case 'rep':return G?Math.round(G.rep):0;
+    case 'dishes':return G?G.dishes.length:0;
+    case 'menu':return G?G.menu.length:0;
+    case 'chain':return G?(G.prestiges||0):0;
+    case 'rare':return G?G.dishes.filter(function(id){var r=recById(id);return r&&r.rare}).length:0;
+  }
+  return 0;
+}
+/** 第 ci 章（0 基）已完成目标数 @param {number} ci @returns {number} 0-3 */
+function chGoalsDone(ci){
+  var C=CHAPTERS[ci];if(!C)return 0;
+  var n=0;C.goals.forEach(function(g){if(chGoalVal(g[0])>=g[2])n++});
+  return n;
+}
+/** 章节推进检查：saveGame 全局挂载点触发，连跳多章用 while；只累计待领取，不自动发钱 */
+function checkChapter(){
+  if(!G||G.over)return;
+  var moved=false;
+  while(LIFE.ch<CHAPTERS.length&&chGoalsDone(LIFE.ch)===3){
+    var C=CHAPTERS[LIFE.ch];LIFE.ch++;LIFE.chPend=(LIFE.chPend||0)+C.rew;moved=true;
+    toast('📜 章节完成「'+C.n+'」！奖励 ¥'+fmt(C.rew)+' 待领取','gold');
+    SFX.quest();buzz([30,40,30]);
+  }
+  if(moved)saveLife();
+}
+/** 领取章节奖励：仅在有进行中棋局时入账，否则保留待领 */
+function claimCh(){
+  if(!(LIFE.chPend>0))return;
+  if(!G||G.over)return;
+  var n=LIFE.chPend;LIFE.chPend=0;G.money+=n;
+  toast('🎁 章节奖励 +¥'+fmt(n)+' 已入账','gold');
+  SFX.bigcoin();buzz([20,40,20]);
+  renderTop();saveGame();
+}
+/** 一天只提示一次：新玩家可能不会注意到白天面板里的生涯章节入口 */
+var CH_TIP_SEEN=false;
+function chFirstTip(){
+  if(CH_TIP_SEEN)return;
+  CH_TIP_SEEN=true;
+  if(LIFE.ch===0&&(LIFE.chPend||0)===0){
+    setTimeout(function(){toast('📜 生涯章节已开启：点白天面板「详情」查看目标，达标可领奖励','cy')},900);
+  }
+}
+/** 白天面板章节进度区块（保持新系统入口与高频操作面同屏） */
+function chDayBlock(){
+  if(LIFE.ch>=CHAPTERS.length)return '<div class="qst free">👑 生涯章节全通 · 夜市传奇！</div>';
+  var C=CHAPTERS[LIFE.ch],done=chGoalsDone(LIFE.ch);
+  var parts=C.goals.map(function(g){
+    var v=Math.min(chGoalVal(g[0]),g[2]);
+    return (v>=g[2]?'✅':'⬜')+g[1]+fmt(v)+'/'+fmt(g[2]);
+  });
+  return '<div class="qst" style="border-left:3px solid var(--cy)">📜 第'+(LIFE.ch+1)+'章 · <b>'+C.n+'</b>（'+done+'/3）'+
+    (LIFE.chPend>0?' <span class="btn sm gr" data-act="chClaim" role="button" tabindex="0">🎁 领取 ¥'+fmt(LIFE.chPend)+'</span>':'')+
+    ' <span class="btn sm" data-act="chapter" role="button" tabindex="0">详情</span>'+
+    '<br><span style="color:var(--dim);font-size:11px">'+parts.join(' · ')+'</span></div>';
+}
+/** 章节详情面板：当前章目标进度条 + 待领取 + 已完成章节列表 */
+function panelChapter(){
+  var h='<div class="mtxt">完成章节目标推进夜市生涯。金额/接待/分店/城市看「生涯累计」，菜品/菜单/声望看「本档进度」。达标后奖励进入待领取，点击即可入账。</div>';
+  if(LIFE.ch>=CHAPTERS.length){
+    h+='<div class="qst free">👑 七章全通 · 夜市传奇！</div>';
+  }else{
+    var C=CHAPTERS[LIFE.ch];
+    h+='<div class="qst" style="border-left:3px solid var(--cy)"><b>'+C.ic+' 第'+(LIFE.ch+1)+'章 · '+C.n+'</b>　本章奖励 ¥'+fmt(C.rew)+'</div>';
+    C.goals.forEach(function(g){
+      var cur=Math.min(chGoalVal(g[0]),g[2]),pc=Math.min(100,Math.round(cur/g[2]*100));
+      h+='<div style="margin:9px 0"><div style="font-size:12px">'+g[1]+' <b>'+fmt(cur)+' / '+fmt(g[2])+'</b>'+(cur>=g[2]?' ✅':'')+'</div>'+
+         '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+pc+'%;background:linear-gradient(90deg,var(--cy),var(--mg));transition:width .3s"></div></div></div>';
+    });
+  }
+  if(LIFE.chPend>0)h+='<div class="mops" style="margin-top:10px"><div class="btn gr" data-act="chClaim" role="button" tabindex="0">🎁 领取章节奖励 ¥'+fmt(LIFE.chPend)+'</div></div>';
+  if(LIFE.ch>0)h+='<div class="panel-tip" style="margin-top:10px">已完成：'+CHAPTERS.slice(0,LIFE.ch).map(function(c,i){return c.ic+' 第'+(i+1)+'章 '+c.n}).join(' · ')+'</div>';
+  showModal('<h3>📜 生涯章节</h3>'+h+'<div class="mops"><div class="btn mg" data-act="closeModal">关闭</div></div>',true);
 }
 /* ================= 抉择事件 ================= */
 /** 每日清晨随机抉择事件（每天重置 G.cmod 修饰） */
@@ -1997,6 +2127,7 @@ function renderDay(){
     '<div class="wx">'+W.ic+' 今天：'+W.n+' —— '+W.d+'</div>'+
     (G.faves&&G.faves.length?(function(){var frs=(G.faves||[]).map(function(f){return recById(f)}).filter(function(r){return r});return frs.length?'<div class="qst" style="border-left:3px solid var(--mg)">🔥 今日人气菜：<b>'+frs.map(function(r){return r.n}).join('、')+'</b>（卖出小费 ×1.5）</div>':''})():'')+ /* v0.18.1 人气菜提示（多道随连锁扩展） */
     (G.quest?'<div class="qst">🎯 今日悬赏：'+G.quest.txt+' <b>'+(G.quest.done?'✓ 已完成':'奖励 +¥'+G.quest.rew)+'</b></div>':'')+
+    chDayBlock()+
     (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
     (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
@@ -2004,6 +2135,7 @@ function renderDay(){
     return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'" role="button" tabindex="0">'+t[1]+'</div>'}).join('');
   renderDayPanel();
   renderTop();
+  chFirstTip(); /* v0.22.3 生涯章节首次引导（每日只提示一次） */
 }
 function menuNeed(){
   var need={};
@@ -2784,6 +2916,8 @@ function askPrestige(){
 /** 连锁重开：保留生涯/成就/分店，G 重置为新档，prestiges+1 即店长槽位+1 */
 function doPrestigeGo(){
   LIFE.brands++;checkAch('brand');if(LIFE.brands>=3)checkAch('brands3');if(LIFE.brands>=5)checkAch('brands5'); /* v0.15.0 */
+  /* v0.22.1 章节挂载：LIFE.ch 保留账号级跨档进度（自动进入下一章）；LIFE.chPend 跨档清零——老档未领章节奖励不应保留到新档，避免连锁重开时用新档刷老档奖励 */
+  LIFE.chPend=0;saveLife();
   var p=(G.prestiges||0)+1;
   var oldDiff=G.difficulty;
   var keepRt=JSON.parse(JSON.stringify(G.rdtree||{}));
@@ -2848,7 +2982,7 @@ function startNight(){
   }
   NIGHT={active:true,t:0,dur:60,queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0,
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null,
-    critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set()};
+    critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set(),dir:0,dirToast:0};
   saveGame();
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
@@ -2860,14 +2994,15 @@ function startNight(){
 }
 /* ================= v0.21.0 等距伪3D夜市街景 ================= */
 var SCENE_RAF=null;
-function stopNightScene(){if(SCENE_RAF){cancelAnimationFrame(SCENE_RAF);SCENE_RAF=null}}
+function stopNightScene(){if(SCENE_RAF){cancelAnimationFrame(SCENE_RAF);SCENE_RAF=null}SCENE_FX=[]} /* v0.22.0 停场清空特效 */
 function nightSceneTick(){
-  if(!NIGHT||!NIGHT.active||!G.gfxScene)return;
-  renderNightScene();
+  if(!NIGHT||!NIGHT.active||!G.gfxScene){SCENE_RAF=null;return}
+  /* v0.22.4 暂停且无脏标记时跳过重绘（静态画面无需每帧重画） */
+  if(!NIGHT.paused||SCENE_DIRTY)renderNightScene();
   SCENE_RAF=requestAnimationFrame(nightSceneTick);
 }
-/* 等距投影系统 */
-var ISO={tw:72,th:36,hs:36,ox:0,oy:0};
+/* 等距投影系统（v0.22.1 ISO.tw/th/hs 提为常量避免每帧重算；ox/oy 随窗口变化保留在 renderNightScene 内更新） */
+var ISO={tw:72,th:36,hs:36,ox:0,oy:0,_dpr:0};
 function isoS(wx,wy,wz){return{x:ISO.ox+(wx-wy)*ISO.tw*.5,y:ISO.oy+(wx+wy)*ISO.th*.5-(wz||0)*ISO.hs}}
 function isoW(sx,sy){var dx=sx-ISO.ox,dy=sy-ISO.oy;return{x:dx/ISO.tw+dy/ISO.th,y:dy/ISO.th-dx/ISO.tw}}
 /* 实体类型 */
@@ -2875,6 +3010,43 @@ var ENT_GROUND=0,ENT_STALL=1,ENT_STOVE=2,ENT_CUST=3,ENT_COOK=4;
 /* 场景实体缓存与排序 */
 var SCENE_ENTS=[],SCENE_DIRTY=true;
 function markSceneDirty(){SCENE_DIRTY=true}
+/* ================= v0.22.0 场景即时特效：金钱飞字 + 金币粒子 ================= */
+var SCENE_FX=[];
+/** 摊位上方生成漂浮文字（关闭场景画质时静默跳过） */
+function spawnSceneFx(txt,col,size){
+  if(!G||!G.gfxScene)return;
+  if(SCENE_FX.length>30)SCENE_FX.shift();
+  var p=isoS(0,0,1.9);
+  SCENE_FX.push({k:'t',txt:txt,col:col||'#4ade80',sz:size||13,x:p.x,y:p.y,born:performance.now(),life:1100});
+}
+/** 摊位上方喷洒金币粒子 */
+function spawnCoins(n){
+  if(!G||!G.gfxScene)return;
+  for(var i=0;i<n&&SCENE_FX.length<40;i++){
+    var p=isoS(0,0,1.6);
+    SCENE_FX.push({k:'c',x:p.x+(Math.random()*36-18),y:p.y,vx:(Math.random()*60-30),vy:-(80+Math.random()*90),g:260,born:performance.now(),life:800});
+  }
+}
+/** 更新并绘制特效层：超龄粒子剔除（供测试直接驱动剔除逻辑） */
+function drawSceneFx(ctx,now,DPR){
+  for(var i=SCENE_FX.length-1;i>=0;i--){
+    var f=SCENE_FX[i],age=now-f.born;
+    if(age>f.life){SCENE_FX.splice(i,1);continue}
+    var a=1-age/f.life;
+    if(f.k==='t'){
+      ctx.save();ctx.globalAlpha=a;ctx.fillStyle=f.col;
+      ctx.font='bold '+Math.round(f.sz*DPR)+'px sans-serif';ctx.textAlign='center';
+      ctx.shadowColor=f.col;ctx.shadowBlur=8*DPR;
+      ctx.fillText(f.txt,f.x+age*.02*DPR,f.y-age*.05*DPR);
+      ctx.restore();
+    }else{
+      var dt=age/1000,x=f.x+f.vx*dt*DPR,y=f.y+f.vy*dt*DPR+.5*f.g*dt*dt*DPR;
+      ctx.save();ctx.globalAlpha=a;ctx.fillStyle='#fbbf24';
+      ctx.shadowColor='#fbbf24';ctx.shadowBlur=6*DPR;
+      ctx.beginPath();ctx.arc(x,y,2.2*DPR,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+  }
+}
 function custIsoPos(i){return{wx:-1.8+i*.9,wy:1.8,wz:0}}
 function buildSceneEnts(){
   if(!SCENE_DIRTY)return SCENE_ENTS;
@@ -2899,33 +3071,50 @@ function buildSceneEnts(){
   SCENE_ENTS=ents;SCENE_DIRTY=false;
   return ents;
 }
+/* ================= v0.22.4 静态场景离屏缓存 =================
+ * 天空渐变 / 远处霓虹 / 35 块地砖全部与时间无关，原实现每帧重画。
+ * 现烘到离屏 canvas，仅在画布尺寸或 DPR 变化时重建；每帧只贴图 + 画动态实体。
+ * SCENE_STAT 供自动化测试断言缓存命中率。 */
+var SCENE_BG=null,SCENE_BG_KEY='',SCENE_STAT={bakes:0,frames:0};
+function bakeSceneBg(W,H,DPR){
+  var c=document.createElement('canvas');c.width=W;c.height=H;
+  var g=c.getContext('2d');if(!g)return;
+  var grd=g.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,'#120a1f');grd.addColorStop(1,'#0b1426');
+  g.fillStyle=grd;g.fillRect(0,0,W,H);
+  g.save();
+  g.shadowColor='rgba(34,211,238,.25)';g.shadowBlur=30;
+  g.fillStyle='rgba(34,211,238,.07)';g.fillRect(W*.08,H*.08,50*DPR,22*DPR);
+  g.shadowColor='rgba(255,64,255,.25)';g.shadowBlur=30;
+  g.fillStyle='rgba(255,64,255,.07)';g.fillRect(W*.78,H*.12,44*DPR,18*DPR);
+  g.restore();
+  var ents=buildSceneEnts();
+  for(var i=0;i<ents.length;i++){if(ents[i].type===ENT_GROUND)drawIsoGround(g,ents[i],DPR)}
+  SCENE_BG=c;SCENE_BG_KEY=W+'x'+H+'x'+DPR;SCENE_STAT.bakes++;
+}
 function renderNightScene(){
   var cv=$('#nightScene');if(!cv)return;
   var ctx=cv.getContext('2d');if(!ctx)return;
-  var DPR=Math.min(2,window.devicePixelRatio||1);
+  /* v0.22.1 DPR 缓存在 ISO._dpr，devicePixelRatio 页面生命期内不变 */
+  if(!ISO._dpr)ISO._dpr=Math.min(2,window.devicePixelRatio||1);
+  var DPR=ISO._dpr;
   var W=cv.width=cv.clientWidth*DPR;
   var H=cv.height=cv.clientHeight*DPR;
   if(W<10||H<10)return;
   ISO.ox=W*.5;ISO.oy=H*.48;
   ctx.clearRect(0,0,W,H);
   var t=performance.now()/1000;
-  /* 夜空 */
-  var grd=ctx.createLinearGradient(0,0,0,H);
-  grd.addColorStop(0,'#120a1f');grd.addColorStop(1,'#0b1426');
-  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
-  /* 远处霓虹 */
-  ctx.save();
-  ctx.shadowColor='rgba(34,211,238,.25)';ctx.shadowBlur=30;
-  ctx.fillStyle='rgba(34,211,238,.07)';ctx.fillRect(W*.08,H*.08,50*DPR,22*DPR);
-  ctx.shadowColor='rgba(255,64,255,.25)';ctx.shadowBlur=30;
-  ctx.fillStyle='rgba(255,64,255,.07)';ctx.fillRect(W*.78,H*.12,44*DPR,18*DPR);
-  ctx.restore();
-  /* 深度排序实体绘制 */
+  SCENE_STAT.frames++;
+  /* v0.22.4 静态层走离屏缓存（天空/霓虹/地砖） */
+  var bgKey=W+'x'+H+'x'+DPR;
+  if(!SCENE_BG||SCENE_BG_KEY!==bgKey)bakeSceneBg(W,H,DPR);
+  if(SCENE_BG)ctx.drawImage(SCENE_BG,0,0,W,H);
+  /* 深度排序实体绘制（地砖已烘入静态层） */
   var ents=buildSceneEnts();
   for(var i=0;i<ents.length;i++){
     var e=ents[i];
+    if(e.type===ENT_GROUND)continue;
     switch(e.type){
-      case ENT_GROUND:drawIsoGround(ctx,e,DPR);break;
       case ENT_STALL:drawIsoStall(ctx,e,DPR);break;
       case ENT_STOVE:drawIsoStove(ctx,e,DPR,t);break;
       case ENT_CUST:drawIsoCust(ctx,e,DPR,t);break;
@@ -2940,6 +3129,8 @@ function renderNightScene(){
     ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-7*DPR,ry+16*DPR);ctx.stroke();
   }
   ctx.restore();
+  /* v0.22.0 即时特效层（金钱飞字/金币粒子） */
+  drawSceneFx(ctx,t*1000,DPR);
 }
 /* 地砖 */
 function drawIsoGround(ctx,e,DPR){
@@ -3097,7 +3288,36 @@ function nightSceneClick(e){
     }
   }
 }
-function spawnGap(){return (3.6/flowMult())*(0.75+Math.random()*.5)}
+/* ================= v0.22.2 AI Director 自适应难度 =================
+ * 设计思路：夜晚不是固定曲线，而是按「本晚真实表现」微调三个旋钮——
+ *   客流间隔 spawnGap / 新顾客耐心 patMax（生成时快照）/ 结算日租。
+ * 玩家顺手 → 加压（更多客人、更短耐心、略高租金）；玩家吃紧 → 减压（更少客人、更宽容忍、租金略降）。
+ * 全部乘区无新状态字段、无新面板；dir 只在 NIGHT 生命周期内存在，不写存档。 */
+function dirTarget(){
+  if(!NIGHT)return 0;
+  var tot=NIGHT.servedN+NIGHT.lostN;
+  if(tot<6)return 0; /* 样本不足不下判断，开局保持原曲线 */
+  var acc=NIGHT.servedN/tot;
+  var s=(acc-.65)/.25; /* 65% 送达率为中性，90% 视为满分表现 */
+  if(NIGHT.bestCombo>=8)s+=.15; /* 高连击额外加压 */
+  if(G&&G.rep<25)s-=.3; /* 低声望补偿：避免越打越崩的死螺旋 */
+  return clamp(s,-1,1);
+}
+/** 难度档位对自适应幅度缩放：休闲更温和，地狱更敏感 */
+function dirAmp(){var d=diff();return d&&d.id==='easy'?.5:d&&d.id==='hard'?1.2:d&&d.id==='hell'?1.4:1}
+function dirK(){return clamp((NIGHT&&NIGHT.dir)||0,-1,1)*dirAmp()}
+function dirSpawn(){return 1+dirK()*.35}   /* 客流倍率：1±35% */
+function dirPat(){return 1-dirK()*.28}     /* 耐心倍率：顺手 -28%，吃紧 +28% */
+function dirRent(){return Math.max(.5,1+dirK()*.2)} /* 日租倍率：下限 0.5 防倒贴 */
+/** 生成顾客间隔（秒）：AI Director 的客流旋钮 */
+function spawnGap(){return (3.6/flowMult()/dirSpawn())*(0.75+Math.random()*.5)}
+/** v0.22.3 客流温度条：把 NIGHT.dir 映射成 0-100% 宽度（50% 中性），让自适应难度对玩家可感知 */
+function syncDirBar(){
+  var el=document.getElementById('dirBar');if(!el)return;
+  var d=clamp((NIGHT&&NIGHT.dir)||0,-1,1);
+  el.style.width=Math.round(50+d*50)+'%';
+  el.style.background=d>0.15?'linear-gradient(90deg,var(--yl),var(--rd))':d<-0.15?'linear-gradient(90deg,var(--gr),var(--cy))':'linear-gradient(90deg,var(--cy),var(--mg))';
+}
 /** 生成顾客入队：权重抽类型，售价/耐心落进顾客对象快照 */
 function spawnCust(){
   if(NIGHT.queue.length>=6)return;
@@ -3129,7 +3349,7 @@ function spawnCust(){
   NIGHT.cid++;
   var CM=G.cmod||{};
   var VB2=venueBuff();
-  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(vbuffPat||1)*(VB2.pat||1)*(ev()?(ev().pat||1):1)*(CM.pat||1);
+  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(vbuffPat||1)*(VB2.pat||1)*(ev()?(ev().pat||1):1)*(CM.pat||1)*dirPat(); /* v0.22.2 自适应耐心 */
   NIGHT.queue.push({cid:NIGHT.cid,type:cust.id,n:cust.n,e:cust.e,pay:cust.pay,tip:cust.tip,
     noRep:!!cust.noRep,sp:sp?sp.id:null,spD:sp?sp.dsc:'',
     dish:dish.id,dishN:dish.n,price:dishPrice(dish),cat:dish.cat,pat:patMax,patMax:patMax});
@@ -3148,6 +3368,7 @@ function loseCust(c){
   if(c.noRep)pen=0;
   if((G.talents.shield||0)>0&&Math.random()<.5)pen=0;
   G.rep=Math.max(0,G.rep-pen);NIGHT.lostN++;NIGHT.combo=0; /* v0.18.0 气跑清空连击 */
+  buzz(40); /* v0.22.0 负反馈触觉 */
   if(pen>0)toast(c.e+' '+c.n+' 气跑了！声望 -'+pen,'rd');
   else toast(c.e+' '+c.n+' 离开了（未扣声望）','rd');
   renderNight();renderTop();markSceneDirty();
@@ -3211,7 +3432,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
     var stolen=G.money>0?Math.min(Math.round(G.money),30+((Math.random()*50)|0)):0;
     if(stolen>0){G.money=Math.max(0,G.money-stolen);toast('🥷 摸兜客顺手牵羊 -¥'+fmt(stolen)+'！下次别接他的单','rd')}
     else toast('🥷 摸兜客摸了个空（你身无分文）','rd');
-    SFX.bad();renderTop();renderNight();markSceneDirty();
+    SFX.bad();buzz(60);renderTop();renderNight();markSceneDirty();
     if(G.total&&G.total.spec>=10)checkAch('spec10');
     return;
   }
@@ -3223,7 +3444,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   var crit=Math.random()<critCh;
   if(crit){base*=2;NIGHT.critN++}
   NIGHT.combo=(NIGHT.combo||0)+1;if(NIGHT.combo>(NIGHT.bestCombo||0))NIGHT.bestCombo=NIGHT.combo; /* v0.18.0 连击计数 */
-  if(NIGHT.combo%5===0)toast('🔥 连击 x'+NIGHT.combo+'！小费加成 +'+Math.round(Math.min(50,NIGHT.combo*4))+'%','gold');
+  if(NIGHT.combo%5===0){toast('🔥 连击 x'+NIGHT.combo+'！小费加成 +'+Math.round(Math.min(50,NIGHT.combo*4))+'%','gold');SFX.combo(NIGHT.combo);spawnSceneFx('🔥 连击 x'+NIGHT.combo,'#22d3ee',15);buzz(24)} /* v0.22.0 连击反馈包 */
   var ap=avgPriceMod();
   var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura;
   if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
@@ -3232,6 +3453,9 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   if(G.faves&&G.faves.indexOf(k.dish)>=0)tip*=1.5; /* v0.18.1 人气菜小费×1.5（多道） */
   var gain=Math.round(base+tip);
   G.money+=gain;NIGHT.earn+=gain;
+  /* v0.22.0 服务即时反馈：飞字+金币粒子+触觉 */
+  spawnSceneFx('+¥'+fmt(gain),crit?'#fbbf24':'#4ade80',crit?17:13);
+  spawnCoins(crit?10:5);buzz(crit?18:8);
   NIGHT.tipN+=Math.round(tip);
   NIGHT.servedN++;NIGHT.sellN++;
   G.mastery[k.dish]=(G.mastery[k.dish]||0)+1;
@@ -3253,6 +3477,12 @@ function nightTick(){
   if(!NIGHT.paused){
     var dt=.1*NIGHT.speed;
     NIGHT.t+=dt;
+    /* v0.22.2 AI Director：缓动逼近目标强度，避免客流骤变；首次跨越阈值给一次提示 */
+    NIGHT.dir+=((dirTarget())-(NIGHT.dir||0))*Math.min(1,dt*.6);
+    if(!NIGHT.dirToast&&Math.abs(NIGHT.dir)>=.5&&NIGHT.t>8){
+      NIGHT.dirToast=1;
+      toast(NIGHT.dir>0?'🔥 客流升温：客人更密、耐心更短':'💗 夜市放缓：客流变缓、客人更有耐心','cy');
+    }
     NIGHT.spawnT-=dt;
     if(NIGHT.spawnT<=0){spawnCust();NIGHT.spawnT=spawnGap()}
     var spm=staffPatMult();
@@ -3280,6 +3510,7 @@ function renderNight(){
   $('#timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
   $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
   $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
+  syncDirBar(); /* v0.22.3 客流温度条 */
   $('#cookList').innerHTML=NIGHT.cooking.map(function(k){
     return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:11px;color:var(--cy)">👆催</span></div>'}).join('');
   $('#custQueue').innerHTML=NIGHT.queue.map(function(c){
@@ -3307,6 +3538,7 @@ function updateNightTick(){
   tb.classList.toggle('warn',low);
   $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
   $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
+  syncDirBar(); /* v0.22.3 客流温度条 */
   /* v0.21.0 等距场景：耐心/烹饪进度通过 Canvas 动画实时更新，无需 DOM 操作 */
   /* 保留隐藏 DOM 更新用于测试兼容 */
   NIGHT.queue.forEach(function(c,i){
@@ -3334,6 +3566,12 @@ function prioCust(cid){
   var i=NIGHT.queue.findIndex(function(c){return c.cid===cid});
   if(i>0){var c=NIGHT.queue.splice(i,1)[0];NIGHT.queue.unshift(c);SFX.click();renderNight();markSceneDirty()}
 }
+/** v0.22.2 恢复默认排队优先级：按到达序号（cid 升序）重排，撤销所有手动插队 */
+function resetPrio(){
+  if(!NIGHT||!NIGHT.active)return;
+  NIGHT.queue.sort(function(a,b){return a.cid-b.cid});
+  SFX.click();renderNight();markSceneDirty();
+}
 document.addEventListener('keydown',function(e){
   var kt=e.target;
   if(kt&&kt.getAttribute&&kt.getAttribute('role')==='button'){ /* v0.17.4 键盘激活 role=button 控件，且不再误触夜晚快捷键 */
@@ -3343,6 +3581,11 @@ document.addEventListener('keydown',function(e){
   if(!NIGHT||!NIGHT.active)return;
   if(e.code==='Space'){e.preventDefault();togglePause()}
   else if(e.key==='s'||e.key==='S')toggleSpeed();
+  else if(/^[1-5]$/.test(e.key)){ /* v0.22.1 数字键快选队列前 5 位顾客出菜（移动端仍用卡片点击） */
+    var idx=parseInt(e.key,10)-1;var c=NIGHT.queue[idx];if(c)cookFor(c.cid);buzz(10);
+  }else if(e.key==='0'){ /* 0：恢复默认排队顺序（撤销插队），而非逆序插队 */
+    resetPrio();buzz(14);
+  }
 });
 
 /* ================= 结算 / 天赋 / 下一天 ================= */
@@ -3479,7 +3722,7 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   var VT=curVenueTier();
   var rentTxt='',rentCost=0;
   if(VT.rent>0){
-    rentCost=Math.round(VT.rent*(diff().rent||1));
+    rentCost=Math.round(VT.rent*(diff().rent||1)*dirRent()); /* v0.22.2 自适应日租 */
     G.money=Math.max(0,G.money-rentCost);
     rentTxt='<div class="settle-line"><span>🏪 场地日租（'+VT.n.replace(/^[^\s]+\s/,'')+'）</span><b style="color:var(--rd)">-¥'+fmt(rentCost)+'</b></div>';
   }
@@ -3698,6 +3941,8 @@ document.addEventListener('click',function(e){
     case 'pickTalent':pickTalent(id);break;
     case 'rerollTal':rerollTalents();break;
     case 'career':showCareer();break;
+    case 'chapter':panelChapter();break; /* v0.22.0 生涯章节 */
+    case 'chClaim':claimCh();break;
     case 'settings':showSettings();break;
     case 'coachNext':coachNext();break;
     case 'coachSkip':coachSkip();break;
