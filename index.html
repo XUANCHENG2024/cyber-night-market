@@ -343,7 +343,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.23.8 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.23.9 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -2485,6 +2485,41 @@ function buySkin(id){
   if(G.skinsOwned.length>=5)checkAch('skin5');
   if(G.staff.length>=3)checkAch('sk3');
 }
+/* ---- v0.23.9 报表可视化：7 日盈亏迷你柱状图（内联 SVG 零依赖，正绿负红，0 轴虚线） ---- */
+function sparkSVG(rows,opts){
+  opts=opts||{};
+  rows=(Array.isArray(rows)?rows:[]).slice(-7);
+  if(!rows.length)return '';
+  var w=opts.w||264,h=opts.h||52,pad=3;
+  var max=1;rows.forEach(function(r){var v=Math.abs(r&&r.net||0);if(v>max)max=v});
+  var n=rows.length,slot=(w-pad*2)/n,bw=Math.max(5,Math.min(22,Math.floor(slot*.55)));
+  var mid=Math.round(h/2),amp=(h/2)-pad-2;
+  var s='<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="max-width:'+w+'px;display:block;margin-top:4px" role="img" aria-label="近 '+n+' 天盈亏趋势">';
+  s+='<line x1="0" y1="'+mid+'" x2="'+w+'" y2="'+mid+'" stroke="var(--line)" stroke-dasharray="3 3"/>';
+  rows.forEach(function(r,i){
+    var v=(r&&r.net)||0,bh=Math.max(2,Math.round(Math.abs(v)/max*amp));
+    var x=Math.round(pad+i*slot+(slot-bw)/2);
+    s+='<rect x="'+x+'" y="'+(v>=0?mid-bh:mid)+'" width="'+bw+'" height="'+bh+'" rx="2" fill="'+(v>=0?'var(--gr)':'var(--rd)')+'"><title>D'+((r&&r.d)!=null?r.d:'?')+' · '+(v>=0?'+':'-')+'¥'+fmt(Math.abs(v))+'</title></rect>';
+  });
+  return s+'</svg>';
+}
+/* ---- v0.23.9 今晚热销榜：NIGHT.dishCnt 瞬态计数（不入档），TOP3 横向条形 ---- */
+function hotDishHTML(){
+  var dc=NIGHT&&NIGHT.dishCnt;if(!dc)return '';
+  var arr=Object.keys(dc).map(function(id){var r=recById(id);return{id:id,n:r?r.n:id,c:dc[id]||0}})
+    .filter(function(x){return x.c>0}).sort(function(a,b){return b.c-a.c}).slice(0,3);
+  if(!arr.length)return '';
+  var top=arr[0].c;
+  return '<div class="settle-line" style="display:block;text-align:left"><span>🏆 今晚热销 TOP'+arr.length+'</span>'+
+    arr.map(function(x,i){
+      var col=i===0?'var(--gold)':i===1?'var(--cy)':'var(--dim)';
+      return '<div style="display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px">'+
+        '<span style="min-width:14px;color:'+col+';font-weight:700">'+(i+1)+'</span>'+
+        '<span style="flex:0 0 36%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.n)+'</span>'+
+        '<span style="flex:1;height:6px;background:var(--pan2);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:'+Math.round(x.c/top*100)+'%;background:'+col+'"></i></span>'+
+        '<b style="min-width:36px;text-align:right">'+x.c+' 份</b></div>';
+    }).join('')+'</div>';
+}
 /* ---- v0.17.0 店铺面板：列表/切换/主店/任命/报表 ---- */
 function panelShops(){
   var AS=activeShop();
@@ -2498,10 +2533,8 @@ function panelShops(){
       mgr?'<span style="color:var(--cy)">🧑‍💼 '+esc(mgr.n)+' Lv'+mgr.lv+' 托管中（每日自动经营）</span>':
       '<span style="color:var(--dim)">💤 休眠（无店长，需接管或任命）</span>';
     var rep='';
-    if(s.rep7.length){
-      rep='<div style="font-size:11px;color:var(--dim);margin-top:4px">📊 近 '+s.rep7.length+' 天：'+s.rep7.map(function(r){
-        return 'D'+r.d+' <span style="color:'+(r.net>=0?'var(--gr)':'var(--rd)')+'">'+(r.net>=0?'+':'-')+'¥'+fmt(Math.abs(r.net))+'</span>';
-      }).join(' · ')+'</div>';
+    if(s.rep7.length){ /* v0.23.9 文本流水账升级为迷你柱状图，悬停看每日明细 */
+      rep='<div style="font-size:11px;color:var(--dim);margin-top:4px">📊 近 '+s.rep7.length+' 天盈亏</div>'+sparkSVG(s.rep7);
     }
     var ops='';
     if(!isCur)ops+='<div class="btn sm gr" data-act="shopGo" data-id="'+s.id+'">🔄 接管经营</div>';
@@ -3142,7 +3175,7 @@ function startNight(){
   }
   NIGHT={active:true,t:0,dur:Math.min(120,Math.round(60+G.day*1.2)),queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0, /* v0.23.6 夜晚时长随天数动态延长（day33 封顶 100s，上限 120s 保底） */
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null,
-    critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set(),dir:0,dirToast:0};
+    critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set(),dishCnt:{},dir:0,dirToast:0}; /* v0.23.9 dishCnt 热销榜瞬态计数 */
   saveGame();
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
@@ -3620,6 +3653,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   var E=ev(),CM=G.cmod||{};
   if(k.sp&&G.total){G.total.spec=(G.total.spec||0)+1;NIGHT.specN++}
   if(NIGHT.dishSet)NIGHT.dishSet.add(k.dish);
+  if(NIGHT.dishCnt)NIGHT.dishCnt[k.dish]=(NIGHT.dishCnt[k.dish]||0)+1; /* v0.23.9 热销榜计数（出餐即计，含施舍/摸兜） */
   // VIP 累计（普通顾客）
   if(!k.sp&&cust){
     if(!G.vipMap[k.type])G.vipMap[k.type]={s:0,lvl:0};
@@ -4025,11 +4059,13 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   $('#settleBody').innerHTML=
     '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
+    hotDishHTML()+ /* v0.23.9 今晚热销榜 */
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
     '<div class="settle-line"><span>🏅 今晚评级</span><b style="color:'+gradeCol+'">'+grade+(grade==='S'?('（声望+6'+(gradeTp?' · ✨天赋点+1':'')+'）'):grade==='A'?'（声望+3）':grade==='C'?'（继续努力）':'')+'</b></div>'+
     '<div class="settle-line"><span>🔥 最高连击</span><b>x'+(NIGHT.bestCombo||0)+'</b></div>'+
     '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
     chTxt+vipTxt+rentTxt+msTxt+
+    (AS2&&AS2.rep7.length>1?'<div class="settle-line" style="display:block;text-align:left"><span>📈 近 '+AS2.rep7.length+' 天盈亏趋势</span>'+sparkSVG(AS2.rep7)+'</div>':'')+ /* v0.23.9 结算屏趋势图（首夜单柱无意义故 >1 才显示） */
     '<div class="settle-line"><span>📟 当前声望</span><b>'+Math.round(G.rep)+'</b></div>'+
     (G.day%7===0?'<div class="settle-line"><span>🧾 预告</span><b style="color:var(--rd)">明天房东收租！</b></div>':'');
   $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>'+
