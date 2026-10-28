@@ -326,6 +326,13 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
 }
 .btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.cust:focus-visible,.tb:focus-visible,.cook:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+/* ---------- v0.24.0 店铺装修动画 ---------- */
+@keyframes twk{50%{opacity:.25}}
+.twk{animation:twk 1.6s ease infinite}
+@keyframes holoF{50%{transform:translateY(-2.5px)}}
+.holo{animation:holoF 2.2s ease-in-out infinite}
+@keyframes decoPop{0%{filter:brightness(2.4);transform:scale(1.08)}100%{filter:none;transform:none}}
+.deco-pop{animation:decoPop .6s ease}
 </style>
 </head>
 <body>
@@ -343,7 +350,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.23.9 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.0 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -957,7 +964,7 @@ function staffCapMax(){return 3+mgrCapSum()}
  * 模式：活跃店=G 顶字段，休眠店=snap 快照；saveGame 前 syncShop 双向同步 */
 function mkShop(id,n,main,city,tier,variant){
   return{id:id,n:n,main:!!main,city:city,venue:{tier:tier,variant:variant},lv:1,xp:0,
-    money:0,dayBuy:0,stat:{earn:0,served:0,days:0},rep7:[],
+    money:0,dayBuy:0,decor:0,stat:{earn:0,served:0,days:0},rep7:[], /* v0.24.0 decor 装修等级 0-4 */
     snap:{ings:{},dishes:[],menu:[],staff:[],ups:{},priceMod:{},mastery:{}}};
 }
 function shopById(id){return (G&&G.shops?G.shops:[]).find(function(s){return s.id===id})||null}
@@ -1315,6 +1322,7 @@ function sanitizeSave(d){
         return{d:clamp(Math.round(+r.d||0),0,9999),gross:clamp(Math.round(+r.gross||0),0,1e12),
           cost:clamp(Math.round(+r.cost||0),0,1e12),net:clamp(Math.round(+r.net||0),-1e12,1e12),serve:clamp(Math.round(+r.serve||0),0,1e9)};
       }).filter(Boolean);
+      ns.decor=clamp(Math.round(+s.decor||0),0,DECORS.length-1); /* v0.24.0 装修等级白名单钳制 */
       /* 休眠店快照清洗（活跃店快照随后由 g 顶字段覆盖） */
       var sp=(s.snap&&typeof s.snap==='object')?s.snap:{};
       var sings={};INGS.forEach(function(ig){var v2=Math.floor(+((sp.ings||{})[ig.id])||0);if(v2>0&&(!ig.city||ig.city===cid||imp[ig.id]))sings[ig.id]=clamp(v2,0,999)}); /* v0.19.0 进口豁免 */
@@ -2485,6 +2493,62 @@ function buySkin(id){
   if(G.skinsOwned.length>=5)checkAch('skin5');
   if(G.staff.length>=3)checkAch('sk3');
 }
+/* ================= v0.24.0 店铺装修系统 =================
+ * DECORS 五级逐级升级；加成挂活跃店（flowMult 客流 / serveOut 小费）；外观 stallSVG 随档位增元素 */
+const DECORS=[
+  {lv:0,n:'素面摊位',ic:'🏕️',cost:0,flow:0,tip:0,d:'白手起家的小摊，一切从简'},
+  {lv:1,n:'灯串招牌',ic:'🏮',cost:300,flow:.03,tip:.04,d:'一串暖灯挂檐下，路人驻足'},
+  {lv:2,n:'霓虹灯牌',ic:'💈',cost:900,flow:.06,tip:.08,d:'赛博霓虹描边，夜市焦点'},
+  {lv:3,n:'全息投影',ic:'🛸',cost:2400,flow:.10,tip:.13,d:'全息菜单悬浮半空，科技感拉满'},
+  {lv:4,n:'机甲厨房',ic:'🤖',cost:6000,flow:.15,tip:.20,d:'机械臂翻锅表演，围观如潮'},
+];
+function decoB(){var s=activeShop();var lv=s?clamp(s.decor||0,0,DECORS.length-1):0;var d=DECORS[lv];return{lv:lv,flow:d.flow||0,tip:d.tip||0}}
+/* ---- 可视化店铺模型：内联 SVG，按装修档位叠加灯串/霓虹/全息/机械臂 ---- */
+function stallSVG(s){
+  if(!s)return '';
+  var lv=clamp(s.decor||0,0,DECORS.length-1);
+  var nm=esc((s.n||'摊').substring(0,4));
+  var neon=lv>=2;
+  var h='<svg viewBox="0 0 120 86" width="96" style="display:block;flex:none" role="img" aria-label="店铺外观 '+esc(DECORS[lv].n)+'">';
+  h+='<line x1="4" y1="78" x2="116" y2="78" stroke="var(--line)" stroke-width="2"/>';
+  h+='<rect x="30" y="52" width="60" height="26" rx="3" fill="var(--pan2)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
+  h+='<line x1="34" y1="30" x2="34" y2="52" stroke="var(--dim)"/><line x1="86" y1="30" x2="86" y2="52" stroke="var(--dim)"/>';
+  h+='<path d="M24 32 Q32 22 40 32 Q48 42 56 32 Q64 22 72 32 Q80 42 88 32 Q93 25 96 32 L92 23 Q60 13 28 23 Z" fill="var(--cyA2)" stroke="'+(neon?'var(--mg)':'var(--cy)')+'"/>';
+  h+='<rect x="42" y="35" width="36" height="13" rx="2" fill="var(--pan)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
+  h+='<text x="60" y="44.5" font-size="8" text-anchor="middle" fill="'+(neon?'var(--cy)':'#e8e8ff')+'"'+(neon?' font-weight="700"':'')+'>'+nm+'</text>';
+  if(lv>=1)for(var i=0;i<4;i++)h+='<circle class="twk" cx="'+(38+i*14.5)+'" cy="51" r="2" fill="var(--yl)" style="animation-delay:'+(i*.25)+'s"/>';
+  if(lv>=3)h+='<rect class="holo" x="48" y="5" width="24" height="11" rx="2" fill="var(--cyA)" stroke="var(--cy)"/><line x1="60" y1="16" x2="60" y2="23" stroke="var(--cy)" stroke-dasharray="2 2" opacity=".6"/>';
+  if(lv>=4)h+='<polyline points="92,52 100,41 96,30" fill="none" stroke="var(--gr)" stroke-width="2.5"/><circle cx="100" cy="41" r="2.4" fill="var(--gr)"/><circle cx="96" cy="30" r="2.8" fill="var(--gr)"/>';
+  return h+'</svg>';
+}
+function decorAsk(){
+  var s=activeShop();if(!s)return;
+  var lv=clamp(s.decor||0,0,DECORS.length-1);
+  SFX.click();
+  showModal('<h3>🎨 店铺装修 ·「'+esc(s.n)+'」</h3><div class="mtxt" style="margin-bottom:8px">装修永久提升该店<b>客流</b>与<b>小费</b>，逐级解锁更炫外观（仅当前经营店可装修）</div>'+
+    DECORS.map(function(d,i){
+      var cur=i===lv,owned=i<lv,next=i===lv+1;
+      var tag=cur?'<b style="color:var(--cy)">✓ 当前档位</b>':owned?'<span style="color:var(--gr)">已拥有</span>':next?'<b style="color:var(--yl)">¥'+fmt(d.cost)+'</b>':'<span style="color:var(--dim)">🔒 逐级解锁</span>';
+      return '<div class="up-card" style="'+(cur?'border-color:var(--cy)':'')+'"><div class="dn"><b>'+d.ic+' Lv'+i+' '+d.n+'</b><span>'+d.d+'</span></div>'+
+        '<div style="font-size:11px;color:var(--dim)">客流 +'+Math.round(d.flow*100)+'% · 小费 +'+Math.round(d.tip*100)+'%</div>'+
+        '<div class="ops">'+(next?'<div class="btn sm mg" data-act="buyDecor" data-id="'+i+'">⬆ 升级到此档</div>':'')+tag+'</div></div>';
+    }).join('')+
+    '<div class="mops"><div class="btn" data-act="closeModal">关闭</div></div>',true);
+}
+function buyDecor(i){
+  var s=activeShop();if(!s)return;
+  i=Math.round(+i);
+  var lv=clamp(s.decor||0,0,DECORS.length-1);
+  if(i!==lv+1){toast('只能逐级装修','rd');SFX.bad();return}
+  var d=DECORS[i];if(!d)return;
+  if(G.money<d.cost){toast('资金不足，还差 ¥'+fmt(d.cost-G.money),'rd');SFX.bad();return}
+  G.money-=d.cost;s.decor=i;
+  SFX.bigcoin();closeModal();
+  toast(d.ic+' 装修完成：'+d.n+'！客流+'+Math.round(d.flow*100)+'% · 小费+'+Math.round(d.tip*100)+'%','gold');
+  saveGame();renderDayPanel();renderTop();
+  var w=document.getElementById('stallArt-'+s.id); /* 升级闪光动画（重触发：先移除再强制回流） */
+  if(w){w.classList.remove('deco-pop');void w.offsetWidth;w.classList.add('deco-pop')}
+}
 /* ---- v0.23.9 报表可视化：7 日盈亏迷你柱状图（内联 SVG 零依赖，正绿负红，0 轴虚线） ---- */
 function sparkSVG(rows,opts){
   opts=opts||{};
@@ -2542,7 +2606,11 @@ function panelShops(){
     if(mgr)ops+='<div class="btn sm" data-act="unassignMgr" data-id="'+mgr.id+'">👋 调回店长</div>';
     else if(G.managers.some(function(m){return !m.shop}))ops+='<div class="btn sm yl" data-act="assignAsk" data-id="'+s.id+'">🧑‍💼 任命店长</div>';
     else ops+='<div class="btn sm" data-act="tab" data-id="staff" style="opacity:.75">无待命店长 · 去招募</div>';
-    return '<div class="up-card"><div class="dn"><b>'+(s.main?'⭐':'🏪')+' '+esc(s.n)+' Lv'+s.lv+'</b><span>'+sc.n+' · '+st.n.replace(/^[^\s]+\s/,'')+'（'+sv.n+'） · 资金 ¥'+fmt(s.money)+'</span></div>'+
+    var dlv=clamp(s.decor||0,0,DECORS.length-1),DD=DECORS[dlv]; /* v0.24.0 装修档位+可视化模型 */
+    var decoRow='<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><span id="stallArt-'+s.id+'" style="display:inline-block">'+stallSVG(s)+'</span>'+
+      '<div style="font-size:11px;color:var(--dim);line-height:1.7">'+DD.ic+' 装修 Lv'+dlv+' · '+DD.n+'<br>客流 +'+Math.round(DD.flow*100)+'% · 小费 +'+Math.round(DD.tip*100)+'%'+
+      (isCur?'<br><span class="btn sm mg" data-act="decorAsk" role="button" style="margin-top:3px">🎨 装修升级</span>':'')+'</div></div>';
+    return '<div class="up-card">'+decoRow+'<div class="dn"><b>'+(s.main?'⭐':'🏪')+' '+esc(s.n)+' Lv'+s.lv+'</b><span>'+sc.n+' · '+st.n.replace(/^[^\s]+\s/,'')+'（'+sv.n+'） · 资金 ¥'+fmt(s.money)+'</span></div>'+
       '<div style="font-size:11px;color:var(--dim)">'+state+'<br>累计：营收 ¥'+fmt(s.stat.earn)+' · 接待 '+fmt(s.stat.served)+' 客 · 经营 '+s.stat.days+' 天</div>'+rep+
       '<div class="ops">'+ops+'</div></div>';
   }).join('');
@@ -3149,6 +3217,7 @@ function flowMult(){  var E=ev(),ef=E?(E.flow||1):1,CM=G.cmod||{};
     *(CB.flow||1)*(VT.flow||1)*(VB.flow||1)*mgrFlowK();
   var ap=avgPriceMod();if(ap>1.2)f*=.8;else if(ap<.9)f*=1.15;
   f*=(1+Math.min(.5,(G.day||1)*.015)); /* v0.23.6 客流随天数缓升（day10 +15% / day33 封顶 +50%），补开局无压力区 */
+  f*=1+decoB().flow; /* v0.24.0 装修客流加成 */
   return f;
 }
 function pickDish(cust){
@@ -3690,7 +3759,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   NIGHT.combo=(NIGHT.combo||0)+1;if(NIGHT.combo>(NIGHT.bestCombo||0))NIGHT.bestCombo=NIGHT.combo; /* v0.18.0 连击计数 */
   if(NIGHT.combo%5===0){toast('🔥 连击 x'+NIGHT.combo+'！小费加成 +'+Math.round(Math.min(50,NIGHT.combo*4))+'%','gold');SFX.combo(NIGHT.combo);spawnSceneFx('🔥 连击 x'+NIGHT.combo,'#22d3ee',15);buzz(24)} /* v0.22.0 连击反馈包 */
   var ap=avgPriceMod();
-  var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura*waveTipK(); /* v0.23.3 收摊冲刺波段小费加成 */
+  var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura*waveTipK()*(1+decoB().tip); /* v0.23.3 收摊冲刺波段小费加成；v0.24.0 装修小费加成 */
   if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
   tip*=1+Math.min(.5,(NIGHT.combo||0)*.04); /* v0.18.0 连击小费加成（参考 Cooking Madness combo） */
@@ -4208,6 +4277,8 @@ document.addEventListener('click',function(e){
     case 'shopOpen':shopOpen(id);break;
     case 'shopGo':shopGo(id);break;
     case 'setMain':setMain(id);break;
+    case 'decorAsk':decorAsk();break; /* v0.24.0 装修 */
+    case 'buyDecor':buyDecor(id);break;
     case 'assignAsk':assignAsk(id);break;
     case 'assignMgr':(function(){var p=String(id||'').split(':');if(p.length===2)assignMgr(p[0],p[1])})();break;
     case 'unassignMgr':unassignMgr(id);break;
