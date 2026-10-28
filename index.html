@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="赛博夜市">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>赛博夜市 · 深夜摆摊模拟器</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -340,7 +343,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.23.6 · 2026-10-23</div>
+    <div class="game-ver">内测版 v0.23.7 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -1063,6 +1066,8 @@ function showLeaderboard(){
 
 /* ================= 全局状态 ================= */
 const SAVE_KEY='cyberNightMarket_v1',LIFE_KEY='cyberNightMarket_life';
+/* v0.23.7 存档模式版本号：结构升级时 +1 并在 MIGRATIONS 追加迁移步骤 */
+const SCHEMA_VER=3;
 let G=null,NIGHT=null,TAB='buy',RD1=null,RD2=null;
 let syncPending=null; // 同步冲突弹窗暂存的导入数据
 let LIFE={served:0,earned:0,brands:0,bestDay:0,specSeen:{},chDone:0,citiesUnlocked:['chengdu'],venuesOwned:['stall:main'],ch:0,chPend:0},ACH={};
@@ -1083,7 +1088,7 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
   lastTs:Date.now(),event:null,mastery:{},loginDates:[],skin:'default',skinsOwned:['default'],difficulty:d.id,
   priceMod:{},cmod:null,choice:null,challenge:null,rdtree:baseUnl,vipMap:vip,
   city:'chengdu',venue:{tier:'stall',variant:'main'},managers:[],mgrPool:null,shopId:'s1',shops:[],dayBuy:0,faves:[],miles:[],imported:{},logi:{lv:0,orders:[]},
-  cityPrices:{},cityPriceDelta:{},contest:null,sellTotal:0,arbTotal:0,gfxScene:1};
+  cityPrices:{},cityPriceDelta:{},contest:null,sellTotal:0,arbTotal:0,gfxScene:1,ver:SCHEMA_VER};
   var s0=mkShop('s1','成都·1号店',true,'chengdu','stall','main');s0.money=g.money;s0.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};g.shops=[s0];
   grantAchDishes(g); // 成就稀有食谱随档保留（成就为账号级进度）
   return g}
@@ -1091,7 +1096,7 @@ function freshG(df){var d=df?DIFFS.find(function(x){return x.id===df})||DIFFS[1]
 /* ================= 存档 ================= */
 /** 持久化进度到 localStorage：先 syncShop 写回活跃店，G.over 死档拦截 */
 var SAVE_WARNED=false; /* v0.23.5 存储写失败（隐私模式/quota）每会话仅提示一次 */
-function saveGame(){try{if(G&&!G.over){syncShop();G.lastTs=Date.now();G.tp=G.tp||0;localStorage.setItem(SAVE_KEY,JSON.stringify(G));checkChapter();saveBaks()}}catch(e){
+function saveGame(){try{if(G&&!G.over){syncShop();G.lastTs=Date.now();G.tp=G.tp||0;G.ver=SCHEMA_VER;localStorage.setItem(SAVE_KEY,JSON.stringify(G));checkChapter();saveBaks()}}catch(e){
     if(!SAVE_WARNED){SAVE_WARNED=true;try{toast('⚠️ 存档写入失败（存储空间不足/隐私模式），建议导出同步码备份','rd')}catch(e2){}}}
   SYNC.mirrorSoon()}
 function saveLife(){try{localStorage.setItem(LIFE_KEY,JSON.stringify({life:LIFE,ach:ACH}))}catch(e){}
@@ -1347,19 +1352,110 @@ function sanitizeSave(d){
     as.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups,priceMod:g.priceMod,mastery:g.mastery};
     /* v0.20.0 画质开关白名单 */
     g.gfxScene=(d.gfxScene===0||d.gfxScene===1)?d.gfxScene:1;
+    g.ver=SCHEMA_VER; /* v0.23.7 清洗输出始终落当前模式版本 */
     return g;
   }catch(e){return null}
 }
+/* ================= v0.23.7 存档迁移管线 + 内存状态自检 =================
+ * ① migrateSave：加载时先按 ver 逐段执行结构迁移（纯数据转换/改名/补缺），
+ *    再走 sanitizeSave 白名单清洗——结构演进与数值合法性解耦，旧档永不报废。
+ * ② checkState：G 是全局可变单例，长会话/异常中断/跨版本后可能漂移。
+ *    在加载完成、跨天结算、手动自检时校验核心不变量并就地修复：
+ *    数值域（day/money/rep 有限且在界）、集合域（menu⊆dishes⊆食谱表、
+ *    食材数量 0..999）、结构域（恰好一家主店、shopId 有效、活跃店快照对齐、
+ *    员工不超管理力上限、店长一店一人）。修复计数入 STATE_FIXES，每会话提示一次。 */
+var MIGRATIONS=[
+  {v:1,fn:function(d){ /* v0→v1：旧字段 fave 单值 → faves 数组 */
+    if(d.fave!==undefined&&d.faves===undefined)d.faves=[d.fave];
+    return d}},
+  {v:2,fn:function(d){ /* v1→v2：画质开关/店铺注册表字段补缺（老档无此二字段） */
+    if(d.gfxScene===undefined)d.gfxScene=1;
+    if(!Array.isArray(d.shops))d.shops=[];
+    return d}},
+  {v:3,fn:function(d){ /* v2→v3：ver 标记正式入档（无结构变化，占位示例） */
+    return d}}
+];
+/** 按版本链迁移原始存档对象（在 sanitizeSave 之前调用）@param {Object} d 原始JSON @returns {Object} */
+function migrateSave(d){
+  if(!d||typeof d!=='object')return d;
+  var v=Math.round(+d.ver||0);
+  MIGRATIONS.forEach(function(m){if(v<m.v){d=m.fn(d)||d;v=m.v}});
+  d.ver=SCHEMA_VER;
+  return d;
+}
+var STATE_FIXES=0,STATE_WARNED=false;
+/** 内存状态不变量自检与自愈 @param {Object} [g] 目标状态（缺省为全局 G） @returns {number} 本次修复处数 */
+function checkState(g){
+  g=g||G;
+  if(!g||typeof g!=='object')return 0;
+  var fix=0;
+  /* 数值域 */
+  if(!(isFinite(+g.day)&&+g.day>=1&&+g.day<=9999)){g.day=1;fix++}else g.day=Math.round(+g.day);
+  if(!(isFinite(+g.money)&&+g.money>=0&&+g.money<=1e9)){g.money=0;fix++}else g.money=Math.round(+g.money);
+  if(!(isFinite(+g.rep)&&+g.rep>=0&&+g.rep<=100)){g.rep=clamp(+g.rep||0,0,100);fix++}
+  /* 集合域：menu ⊆ dishes ⊆ 食谱表（仅在有剔除时重赋值，保持引用稳定） */
+  if(!Array.isArray(g.dishes)){g.dishes=[];fix++}
+  var dd=g.dishes.filter(function(id){return recById(id)});
+  if(dd.length!==g.dishes.length){g.dishes=dd;fix++}
+  if(!Array.isArray(g.menu)){g.menu=[];fix++}
+  var mm=g.menu.filter(function(id){return g.dishes.indexOf(id)>=0});
+  if(mm.length!==g.menu.length){g.menu=mm;fix++}
+  /* 食材数量 0..999，非法条目剔除 */
+  if(!g.ings||typeof g.ings!=='object'){g.ings={};fix++}
+  Object.keys(g.ings).forEach(function(k){
+    var v=Math.floor(+g.ings[k]||0);
+    if(v<=0||v>999){if(g.ings[k]!==undefined&&v>0)fix++;delete g.ings[k]}
+    else if(g.ings[k]!==v){g.ings[k]=v;fix++}
+  });
+  /* 结构域：店铺注册表存在、主店唯一、shopId 有效 */
+  if(!Array.isArray(g.shops)||!g.shops.length){
+    var ms=mkShop('s1','1号店',true,g.city||'chengdu',(g.venue&&g.venue.tier)||'stall',(g.venue&&g.venue.variant)||'main');
+    ms.money=g.money;
+    ms.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff||[],ups:g.ups||{},priceMod:g.priceMod||{},mastery:g.mastery||{}};
+    g.shops=[ms];g.shopId='s1';fix++;
+  }
+  var mainSeen=false;
+  g.shops.forEach(function(s){if(s.main&&!mainSeen)mainSeen=true;else if(s.main){s.main=false;fix++}});
+  if(!mainSeen){g.shops[0].main=true;fix++}
+  if(!(typeof g.shopId==='string'&&g.shops.some(function(s){return s.id===g.shopId}))){
+    g.shopId=(g.shops.filter(function(s){return s.main})[0]||g.shops[0]).id;fix++;
+  }
+  /* 员工数不超管理力上限（3 + 店长管理力合计） */
+  if(!Array.isArray(g.staff)){g.staff=[];fix++}
+  var mgrCap=(Array.isArray(g.managers)?g.managers:[]).reduce(function(a,m){return a+(+m.cap||0)},0);
+  var sMax=3+mgrCap;
+  if(g.staff.length>sMax){g.staff=g.staff.slice(0,sMax);fix++}
+  /* 店长一店一人、派驻店必须存在 */
+  if(Array.isArray(g.managers)){
+    var taken={};
+    g.managers.forEach(function(m){
+      if(m.shop&&g.shops.some(function(s){return s.id===m.shop})&&!taken[m.shop])taken[m.shop]=1;
+      else if(m.shop){m.shop=null;fix++}
+    });
+  }
+  /* 活跃店快照幂等对齐（同 syncShop 语义，静默执行不计修复数） */
+  var as=g.shops.filter(function(s){return s.id===g.shopId})[0];
+  if(as){
+    as.money=g.money;
+    as.snap={ings:g.ings,dishes:g.dishes,menu:g.menu,staff:g.staff,ups:g.ups||{},priceMod:g.priceMod||{},mastery:g.mastery||{}};
+  }
+  if(fix>0){
+    STATE_FIXES+=fix;
+    if(g===G&&!STATE_WARNED){STATE_WARNED=true;try{toast('🔧 状态自检：已自动修复 '+fix+' 处数据异常','cy')}catch(e){}}
+  }
+  return fix;
+}
 function loadGame(){
   var g=null;
-  try{var raw=localStorage.getItem(SAVE_KEY);if(raw)g=sanitizeSave(JSON.parse(raw))}catch(e){g=null}
-  if(g)return g;
+  /* v0.23.7 加载链：JSON → migrateSave 版本迁移 → sanitizeSave 白名单清洗 → checkState 不变量自检 */
+  try{var raw=localStorage.getItem(SAVE_KEY);if(raw)g=sanitizeSave(migrateSave(JSON.parse(raw)))}catch(e){g=null}
+  if(g){checkState(g);return g}
   /* v0.22.0 主档损坏 → 三槽备份按新→旧自动恢复 */
   try{
     var arr=JSON.parse(localStorage.getItem(BAK_KEY)||'[]');
     if(Array.isArray(arr)){
       for(var i=0;i<arr.length;i++){
-        try{var b=sanitizeSave(JSON.parse(arr[i]));if(b){LOAD_BAK=true;return b}}catch(e){}
+        try{var b=sanitizeSave(migrateSave(JSON.parse(arr[i])));if(b){LOAD_BAK=true;checkState(b);return b}}catch(e){}
       }
     }
   }catch(e){}
@@ -1705,6 +1801,13 @@ function showSettings(){
     '<div class="set-slider"><label>🔊 音效音量<b id="sfxVolLbl">'+Math.round(SOUND.vol*100)+'%</b></label>'+
       '<input type="range" min="0" max="100" value="'+Math.round(SOUND.vol*100)+'" oninput="setSfxVol(this.value)"></div>'+
     '<div class="panel-tip" style="margin-top:10px">全部音乐与音效均由 Web Audio 程序化合成，无需外部音频文件，可放心调低或关闭。</div>'+
+    /* v0.23.7 存档健康诊断：主档大小 / 备份槽 / 自检修复计数 + 手动自检 */
+    '<div class="panel-tip" style="margin-top:10px">🧰 存档健康：'+(function(){
+      var sz=0,baks=0;
+      try{sz=(localStorage.getItem(SAVE_KEY)||'').length}catch(e){}
+      try{var a=JSON.parse(localStorage.getItem(BAK_KEY)||'[]');baks=Array.isArray(a)?a.length:0}catch(e2){}
+      return '主档 '+(sz>=1024?(sz/1024).toFixed(1)+'KB':sz+'B')+' · 备份 '+baks+'/3 槽 · 模式 v'+(typeof SCHEMA_VER!=='undefined'?SCHEMA_VER:1)+' · 累计自愈 '+STATE_FIXES+' 处';
+    })()+' <span class="btn sm cy" data-act="stateCheck" style="margin-left:6px">立即自检</span></div>'+
     '<div class="mops"><div class="btn mg" data-act="closeModal">完成</div></div>',true);
   SETTINGS_OPEN=true;
 }
@@ -3960,6 +4063,7 @@ function nextDay(){
   autoRecruit(); /* v0.16.0 店长每日清晨免费补 1 人（在 saveGame 前，随档持久化） */
   autoShopDaily(); /* v0.17.0 托管店每日自动经营结算（同上，随档持久化） */
   arriveLogi(); /* v0.19.0 冷链在途订单到货入库（在 saveGame 前随档持久化） */
+  checkState(); /* v0.23.7 跨天后全量不变量自检，异常就地修复再落盘 */
   saveGame();
   renderDay();
   if(rentPaid)toast('🧾 房东机械臂收租 -¥'+fmt(rentPaid)+(rentPull?'（从分店调拨 ¥'+fmt(rentPull)+'）':''),'rd');
@@ -4076,6 +4180,12 @@ document.addEventListener('click',function(e){
     case 'chapter':panelChapter();break; /* v0.22.0 生涯章节 */
     case 'chClaim':claimCh();break;
     case 'settings':showSettings();break;
+    case 'stateCheck': /* v0.23.7 手动状态自检 */
+      var scf=checkState();
+      if(scf>0){saveGame();toast('🔧 已修复 '+scf+' 处异常并重存','cy')}
+      else toast('✅ 状态健康，无需修复','gr');
+      if(SETTINGS_OPEN)showSettings();
+      break;
     case 'coachNext':coachNext();break;
     case 'coachSkip':coachSkip();break;
     case 'syncCenter':showSyncCenter();break;
@@ -4087,24 +4197,12 @@ document.addEventListener('click',function(e){
   }
 });
 
-/* ================= PWA（manifest 内联，零外部文件） ================= */
+/* ================= PWA（v0.23.6 外置 manifest + Service Worker，file:// 与不支持环境静默跳过） ================= */
 (function(){
   try{
-    var svg="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>"+
-      "<rect width='512' height='512' rx='96' fill='#06060f'/>"+
-      "<rect x='24' y='24' width='464' height='464' rx='76' fill='none' stroke='#22d3ee' stroke-width='10'/>"+
-      "<rect x='24' y='24' width='464' height='464' rx='76' fill='none' stroke='#ff40ff' stroke-width='4' opacity='.6'/>"+
-      "<text x='256' y='235' font-size='160' text-anchor='middle'>🍜</text>"+
-      "<text x='256' y='410' font-size='110' text-anchor='middle' fill='#ff40ff' font-family='sans-serif' font-weight='bold'>夜市</text></svg>";
-    var icon='data:image/svg+xml,'+encodeURIComponent(svg);
-    var man={name:'赛博夜市 · 深夜摆摊模拟器',short_name:'赛博夜市',start_url:'.',display:'standalone',
-      background_color:'#06060f',theme_color:'#06060f',
-      icons:[{src:icon,sizes:'512x512',type:'image/svg+xml',purpose:'any'}]};
-    var l=document.createElement('link');l.rel='manifest';
-    l.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(man));
-    document.head.appendChild(l);
-    var ap=document.createElement('link');ap.rel='apple-touch-icon';ap.href=icon;
-    document.head.appendChild(ap);
+    if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    }
   }catch(e){}
 })();
 
