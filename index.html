@@ -343,6 +343,16 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
 .steam{animation:steamUp 2.2s ease-out infinite;transform-box:fill-box}
 @keyframes decoPop{0%{filter:brightness(2.4);transform:scale(1.08)}100%{filter:none;transform:none}}
 .deco-pop{animation:decoPop .6s cubic-bezier(.22,1,.36,1)}
+/* ---------- v0.24.2 结算仪式感：评级盖章 / 行逐条浮现 / S 级彩带（仅 transform/opacity，reduced-motion 全局接管） ---------- */
+@keyframes stampIn{0%{transform:scale(2.8) rotate(-16deg);opacity:0}60%{transform:scale(.92) rotate(-4deg);opacity:1}100%{transform:scale(1) rotate(-6deg);opacity:1}}
+.gst{display:inline-block;position:relative;animation:stampIn .5s cubic-bezier(.2,2.2,.4,1) .3s both}
+@keyframes ringIn{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(1.5)}}
+.gst.gS::after{content:'';position:absolute;inset:-4px -12px;border:2px solid var(--yl);border-radius:50%;pointer-events:none;animation:ringIn .55s cubic-bezier(.22,1,.36,1) .75s both}
+@keyframes lineUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#settleBody .settle-line{animation:lineUp .32s ease both}
+@keyframes cftFall{0%{transform:translateY(-4vh) rotate(0deg);opacity:1}100%{transform:translateY(108vh) rotate(640deg);opacity:.85}}
+.cft{position:fixed;inset:0;pointer-events:none;z-index:300;overflow:hidden}
+.cft i{position:absolute;top:-12px;left:var(--x);width:6px;height:10px;border-radius:2px;background:var(--c);animation:cftFall var(--d) linear var(--dl) both}
 </style>
 </head>
 <body>
@@ -360,7 +370,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.1 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.2 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -476,6 +486,7 @@ const SFX={ctx:null,
   tick(hi){this.beep(hi?1760:1175,.035,'square',hi?.05:.035)},
   settle(){this.beep(523,.14,'sine',.05);setTimeout(function(){SFX.beep(659,.18,'sine',.045)},120)},
   deny(){this.beep(220,.06,'sine',.035,150)}, /* v0.23.2 操作被拒绝（冷却中/已下锅/无目标）的轻提示音 */
+  stamp(){this.beep(150,.11,'sine',.08,70);setTimeout(function(){SFX.beep(2093,.05,'triangle',.028)},100)}, /* v0.24.2 评级盖章：闷响落定+高光叮 */
 };
 /* v0.22.0 触觉反馈：关键节点轻微震动（不支持的设备静默降级） */
 function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
@@ -4090,6 +4101,19 @@ function copyCard(){
     ta.remove();
   }
 }
+/** v0.24.2 结算营收数字滚动：rAF 三次缓出计数；首帧才清零，无 rAF 环境保持终值落定 */
+function cntUp(el){
+  if(!el)return;
+  var to=+el.getAttribute('data-v')||0;
+  if(to<=0||!window.requestAnimationFrame)return;
+  var t0=null,dur=900;
+  window.requestAnimationFrame(function step(ts){
+    if(t0===null){t0=ts;el.textContent='¥0'}
+    var p=clamp((ts-t0)/dur,0,1),e=1-Math.pow(1-p,3);
+    el.textContent='¥'+fmt(Math.round(to*e));
+    if(p<1)window.requestAnimationFrame(step);
+  });
+}
 /** 收摊结算：S/A/B/C 评级/悬赏/里程碑/天赋点掉落/连击与人气菜展示 */
 function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=null}
   stopNightScene();
@@ -4150,12 +4174,21 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
     toast(ms.ic+' 里程碑达成：'+ms.n+'！','gold');SFX.bigcoin()}
   checkContest(); /* v0.19.0 夜市争霸赛结算（在 saveLife 前写入结果） */
   saveLife();saveGame();
-  $('#settleBody').innerHTML=
-    '<div class="settle-line"><span>💰 今晚营收</span><b>¥'+fmt(NIGHT.earn)+'</b></div>'+
+  /* v0.24.2 S 级彩带纸屑：确定性伪随机（按索引推演，测试可复现），仅 S 级渲染 */
+  var cft='';
+  if(grade==='S'){
+    cft='<div class="cft" aria-hidden="true">';
+    for(var ci=0;ci<16;ci++){
+      cft+='<i style="--x:'+((ci*61+7)%100)+'%;--d:'+(1200+((ci*137)%600))+'ms;--dl:'+((ci*53)%280)+'ms;--c:'+['var(--yl)','var(--cy)','var(--mg)','var(--gr)'][ci%4]+'"></i>';
+    }
+    cft+='</div>';
+  }
+  $('#settleBody').innerHTML=cft+
+    '<div class="settle-line"><span>💰 今晚营收</span><b id="stlEarn" data-v="'+Math.round(NIGHT.earn)+'">¥'+fmt(NIGHT.earn)+'</b></div>'+
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
     hotDishHTML()+ /* v0.23.9 今晚热销榜 */
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
-    '<div class="settle-line"><span>🏅 今晚评级</span><b style="color:'+gradeCol+'">'+grade+(grade==='S'?('（声望+6'+(gradeTp?' · ✨天赋点+1':'')+'）'):grade==='A'?'（声望+3）':grade==='C'?'（继续努力）':'')+'</b></div>'+
+    '<div class="settle-line"><span>🏅 今晚评级</span><b class="gst g'+grade+'" style="color:'+gradeCol+'">'+grade+(grade==='S'?('（声望+6'+(gradeTp?' · ✨天赋点+1':'')+'）'):grade==='A'?'（声望+3）':grade==='C'?'（继续努力）':'')+'</b></div>'+
     '<div class="settle-line"><span>🔥 最高连击</span><b>x'+(NIGHT.bestCombo||0)+'</b></div>'+
     '<div class="settle-line"><span>🎯 悬赏</span><b>'+(G.quest&&G.quest.done?'✓ 完成 +¥'+G.quest.rew:'未完成')+'</b></div>'+
     chTxt+vipTxt+rentTxt+msTxt+
@@ -4165,6 +4198,11 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
   $('#settleOps').innerHTML='<div class="btn big mg" data-act="talents">✨ 领取今晚天赋</div>'+
     (vipBest>0?'<div class="btn big" data-act="vipPanel" style="margin-top:8px">❤️ 查看常客好感</div>':'')+
     '<div class="btn big" data-act="shareCard" style="margin-top:8px">📸 生成分享卡片</div><div class="btn big" data-act="leaderboard" style="margin-top:8px">🏆 查看排行榜</div>';
+  /* v0.24.2 结算仪式编排：行逐条浮现（70ms 阶梯）→ 营收滚动 → 盖章音 */
+  var sll=$('#settleBody').querySelectorAll('.settle-line');
+  for(var sli=0;sli<sll.length;sli++)sll[sli].style.animationDelay=(sli*70)+'ms';
+  cntUp(document.getElementById('stlEarn'));
+  SFX.stamp();
   showScreen('scr-settle');
 }
 function offerTalents(){
