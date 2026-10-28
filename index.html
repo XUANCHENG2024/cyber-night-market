@@ -343,7 +343,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.23.7 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.23.8 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -381,9 +381,9 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div id="cookList"></div>
     <div id="custQueue"></div>
     <div class="night-ops">
-      <div class="btn" data-act="npause" role="button" tabindex="0">⏸ 暂停</div>
-      <div class="btn" data-act="nspeed" role="button" tabindex="0">⏩ 极速</div>
-      <div class="btn" data-act="gfxTg" role="button" tabindex="0" title="切换场景画质">🎨 场景</div>
+      <div class="btn" id="btnNpause" data-act="npause" role="button" tabindex="0">⏸ 暂停</div>
+      <div class="btn" id="btnNspeed" data-act="nspeed" role="button" tabindex="0">⏩ 极速</div>
+      <div class="btn" id="btnGfxTg" data-act="gfxTg" role="button" tabindex="0" title="切换场景画质">🎨 场景</div>
     </div>
     <div id="staffLine"></div>
     <div class="night-tip">点顾客接单 · 点烹饪条催菜 · 卡底「⬆ 优先接待」插队<span class="kb-hint"> · 空格暂停 / S 极速 / 1-5 接单 / Shift+数字插队 / 0 复位</span></div>
@@ -416,6 +416,12 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
 'use strict';
 /* ================= 工具 ================= */
 function $(s){return document.querySelector(s)}
+/* v0.23.8 性能深挖：①静态元素记忆化 gel（isConnected 自愈，PERF.domQ 计真实查询）
+   ②setHTML 同内容跳过（PERF.skip 计跳过的 DOM 重建）③NBAR 夜晚进度条节点缓存 */
+var PERF={domQ:0,skip:0,barRe:0};
+var EL={};
+function gel(id){var e=EL[id];if(!e||!e.isConnected){PERF.domQ++;e=document.getElementById(id);EL[id]=e}return e}
+function setHTML(el,h){if(!el)return false;if(el._lastH===h){PERF.skip++;return false}el._lastH=h;el.innerHTML=h;return true}
 function fmt(n){return Math.round(n).toLocaleString('en-US')}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -1808,6 +1814,8 @@ function showSettings(){
       try{var a=JSON.parse(localStorage.getItem(BAK_KEY)||'[]');baks=Array.isArray(a)?a.length:0}catch(e2){}
       return '主档 '+(sz>=1024?(sz/1024).toFixed(1)+'KB':sz+'B')+' · 备份 '+baks+'/3 槽 · 模式 v'+(typeof SCHEMA_VER!=='undefined'?SCHEMA_VER:1)+' · 累计自愈 '+STATE_FIXES+' 处';
     })()+' <span class="btn sm cy" data-act="stateCheck" style="margin-left:6px">立即自检</span></div>'+
+    /* v0.23.8 性能计数：DOM 查询 / 同内容跳过渲染 / 进度条缓存重建，玩家可见的性能透明度 */
+    '<div class="panel-tip">⚡ 性能计数：DOM 查询 <b>'+PERF.domQ+'</b> 次 · 跳过重复渲染 <b>'+PERF.skip+'</b> 次 · 进度条缓存重建 <b>'+PERF.barRe+'</b> 次</div>'+
     '<div class="mops"><div class="btn mg" data-act="closeModal">完成</div></div>',true);
   SETTINGS_OPEN=true;
 }
@@ -1878,10 +1886,10 @@ window.addEventListener('scroll',function(){if(COACH.on)coachPos()},true);
 /* ================= 顶栏 ================= */
 function renderTop(){
   if(!G)return;
-  $('#tbDay').textContent='第'+G.day+'天';
-  $('#tbRep').textContent='📟 '+Math.round(G.rep);
+  gel('tbDay').textContent='第'+G.day+'天';
+  gel('tbRep').textContent='📟 '+Math.round(G.rep);
   var mv=Math.round(G.money);
-  var me=$('#tbMoney');
+  var me=gel('tbMoney'); /* v0.23.8 顶栏五件全部走 gel 记忆化，白天每次操作省 5 次查询 */
   if(window._pm!==undefined&&mv!==window._pm&&me){
     me.classList.remove('flash-up','flash-down');
     void me.offsetWidth; // 重启动画
@@ -1889,8 +1897,8 @@ function renderTop(){
   }
   window._pm=mv;
   me.textContent='¥'+fmt(mv);
-  var bb=$('#btnBgm');if(bb)bb.classList.toggle('off',!BGM.on);
-  var sb=$('#btnSound');if(sb)sb.textContent=SOUND.on?'🔊':'🔇';
+  var bb=gel('btnBgm');if(bb)bb.classList.toggle('off',!BGM.on);
+  var sb=gel('btnSound');if(sb)sb.textContent=SOUND.on?'🔊':'🔇';
 }
 
 /* ================= 主菜单 ================= */
@@ -2268,7 +2276,7 @@ function renderDay(){
   else evb.classList.add('hidden');
   var L=ltd();
   var CC=curCity(),VT=curVenueTier(),VV=curVenueVar();
-  $('#dayStatus').innerHTML=
+  setHTML(gel('dayStatus'), /* v0.23.8 同内容跳过：切 Tab 等场景下状态行不变则不重建 DOM */
     (L?'<div class="wx ltd">'+L.ic+' 限时活动：'+L.n+' —— '+L.d+'</div>':'')+
     '<div class="wx" style="border-left:3px solid var(--cy)">📍 <b>'+CC.n+'</b> · '+VT.n+'（'+VV.n+'） · 日租 ¥'+fmt(Math.round(VT.rent*(diff().rent||1)))+' <span style="color:var(--dim);font-size:11px">'+CC.dsc+'</span><br><span style="color:var(--cy);font-size:11px">🍜 本地特色：'+cityDishes(CC.id).map(function(r){var got=G.dishes.indexOf(r.id)>=0;return got?r.n:'🔒'+r.n}).join('、')+'<br>🫙 特产食材：'+INGS.filter(function(i){return i.city===CC.id}).map(function(i){return i.ic+i.n}).join('、')+'</span>'+
       '<div class="btn mg" data-act="goMap" style="margin-top:6px;padding:8px 10px;font-size:12px">🗺️ 选择经营位置（10 城 · 5 档场地）</div>'+
@@ -2279,9 +2287,9 @@ function renderDay(){
     chDayBlock()+
     (G.challenge?(function(){var c=challengeNow();return c?'<div class="qst" style="border-left:3px solid var(--yl)">🎯 今日挑战：'+c.ic+' '+c.d+' <b style="color:'+(G.challenge.done?'var(--gr)':'var(--yl)')+'">'+(G.challenge.done?'✓ 今晚已达成':'未达成')+'</b></div>':''})():'')+
     (G.freeRd?'<div class="qst free">🎁 新手福利：首次研发全免费（失败也不花钱）</div>':'')+
-    (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':'');
-  $('#tabs').innerHTML=TABS.map(function(t){
-    return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'" role="button" tabindex="0">'+t[1]+'</div>'}).join('');
+    (G.prestiges>0?'<div class="qst free">🏪 连锁 ×'+G.prestiges+' —— 收入永久 +'+(G.prestiges*30)+'%</div>':''));
+  setHTML(gel('tabs'),TABS.map(function(t){
+    return '<div class="tab'+(TAB===t[0]?' on':'')+'" data-act="tab" data-id="'+t[0]+'" role="button" tabindex="0">'+t[1]+'</div>'}).join(''));
   renderDayPanel();
   renderTop();
   chFirstTip(); /* v0.22.3 生涯章节首次引导（每日只提示一次） */
@@ -2292,17 +2300,18 @@ function menuNeed(){
   return Object.keys(need).filter(function(k){return !(G.ings[k]>0)});
 }
 function renderDayPanel(){
-  var el=$('#dayPanel');
-  if(TAB==='buy')el.innerHTML=panelBuy();
-  else if(TAB==='rd')el.innerHTML=panelRd();
-  else if(TAB==='menu')el.innerHTML=panelMenu();
-  else if(TAB==='dex')el.innerHTML=panelDex();
-  else if(TAB==='staff')el.innerHTML=panelStaff();
-  else if(TAB==='shops')el.innerHTML=panelShops();
-  else if(TAB==='map')el.innerHTML=panelMap();
-  else if(TAB==='market')el.innerHTML=panelMarket();
-  else if(TAB==='contest')el.innerHTML=panelContest();
-  else el.innerHTML=panelUps();
+  var el=gel('dayPanel'),h; /* v0.23.8 先构建后比对，同内容跳过 DOM 重建 */
+  if(TAB==='buy')h=panelBuy();
+  else if(TAB==='rd')h=panelRd();
+  else if(TAB==='menu')h=panelMenu();
+  else if(TAB==='dex')h=panelDex();
+  else if(TAB==='staff')h=panelStaff();
+  else if(TAB==='shops')h=panelShops();
+  else if(TAB==='map')h=panelMap();
+  else if(TAB==='market')h=panelMarket();
+  else if(TAB==='contest')h=panelContest();
+  else h=panelUps();
+  setHTML(el,h);
 }
 function panelBuy(){
   var lack=menuNeed();
@@ -3514,7 +3523,7 @@ function nightWaveTick(){
 function spawnGap(){return (3.6/flowMult()/dirSpawn())*(0.75+Math.random()*.5)*waveSpawnK()}
 /** v0.22.3 客流温度条：把 NIGHT.dir 映射成 0-100% 宽度（50% 中性），让自适应难度对玩家可感知 */
 function syncDirBar(){
-  var el=document.getElementById('dirBar');if(!el)return;
+  var el=gel('dirBar');if(!el)return; /* v0.23.8 gel 记忆化，tick 高频调用零查询 */
   var d=clamp((NIGHT&&NIGHT.dir)||0,-1,1);
   el.style.width=Math.round(50+d*50)+'%';
   el.style.background=d>0.15?'linear-gradient(90deg,var(--yl),var(--rd))':d<-0.15?'linear-gradient(90deg,var(--gr),var(--cy))':'linear-gradient(90deg,var(--cy),var(--mg))';
@@ -3727,17 +3736,26 @@ function nightTickSfx(){
   if(sec!==NIGHT._tickSec){NIGHT._tickSec=sec;SFX.tick(sec<=3)}
 }
 /** 夜晚渲染：签名比对增量更新，避免全量重建 DOM 造成闪烁 */
+/* v0.23.8 NBAR 进度条节点缓存：renderNight 重建列表后同步缓存，tick 直写 style.width 零查询 */
+var NBAR={q:[],c:[]};
+function cacheNightBars(){
+  var q=gel('custQueue'),c=gel('cookList');
+  NBAR.q=[];NBAR.c=[];
+  var i,ch;
+  if(q)for(i=0;i<q.children.length;i++){ch=q.children[i];NBAR.q.push({bar:ch.querySelector('.pbar i'),mood:ch.querySelector('.cMood')})}
+  if(c)for(i=0;i<c.children.length;i++){NBAR.c.push(c.children[i].querySelector('.cbar i'))}
+}
 function renderNight(){
   if(!NIGHT)return;
   var remain=Math.max(0,NIGHT.dur-NIGHT.t);
-  $('#nightClock').textContent=Math.ceil(remain)+'s';
-  $('#timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
-  $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
-  $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
+  gel('nightClock').textContent=Math.ceil(remain)+'s';
+  gel('timebar').firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
+  gel('nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  gel('nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
   syncDirBar(); /* v0.22.3 客流温度条 */
-  $('#cookList').innerHTML=NIGHT.cooking.map(function(k){
-    return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:11px;color:var(--cy)">👆催</span></div>'}).join('');
-  $('#custQueue').innerHTML=NIGHT.queue.map(function(c){
+  var w1=setHTML(gel('cookList'),NIGHT.cooking.map(function(k){ /* v0.23.8 同内容跳过 */
+    return '<div class="cook" data-cook="'+k.cid+'" title="点击催菜 +40%"><span>🍳 '+esc(k.dishN)+'</span><div class="cbar"><i style="width:'+Math.round(100*k.prog/k.need)+'%"></i></div><span style="font-size:11px;color:var(--cy)">👆催</span></div>'}).join(''));
+  var w2=setHTML(gel('custQueue'),NIGHT.queue.map(function(c){
     var rec=recById(c.dish);
     var lack=!rec||(G.ings[rec.a]||0)<1||(G.ings[rec.b]||0)<1;
     return '<div class="cust'+(lack?' noing':'')+(c.sp?' sp':'')+'" data-cid="'+c.cid+'" role="button" tabindex="0">'+
@@ -3745,34 +3763,38 @@ function renderNight(){
       (c.sp?'<span class="spT">'+esc(c.spD||'')+'</span>':'')+
       '<span>'+esc(c.dishN)+' '+(c.sp==='beggar'?'❤️ 施舍':'¥'+c.price)+'</span>'+
       '<div class="pbar"><i style="width:'+Math.round(100*Math.max(0,c.pat)/c.patMax)+'%"></i></div></div>'+
-      '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆ 优先接待</div></div>'}).join('');
-  $('#staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
-  var pb=document.querySelector('[data-act="npause"]');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
-  var sb=document.querySelector('[data-act="nspeed"]');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
-  var gb=document.querySelector('[data-act="gfxTg"]');if(gb)gb.textContent=G.gfxScene?'🎨 场景':'🎨 简约';
+      '<div class="prio" data-act="prio" data-cid="'+c.cid+'" title="优先接待">⬆ 优先接待</div></div>'}).join(''));
+  if(w1||w2)cacheNightBars(); /* DOM 重建才刷新节点缓存 */
+  gel('staffLine').textContent=G.staff.length?('👨‍🍳 '+G.staff.map(function(s){return s.n+(staffSk(s)?staffSk(s).ic:'')}).join('、')+' 正在自动帮厨'):'';
+  var pb=gel('btnNpause');if(pb)pb.textContent=NIGHT.paused?'▶ 继续':'⏸ 暂停';
+  var sb=gel('btnNspeed');if(sb)sb.textContent=NIGHT.speed>1?'🐢 常速':'⏩ 极速';
+  var gb=gel('btnGfxTg');if(gb)gb.textContent=G.gfxScene?'🎨 场景':'🎨 简约';
   document.body.classList.toggle('sceneOff',!G.gfxScene); /* v0.23.5 简约模式显示 DOM 兜底列表 */
 }
 function updateNightTick(){
   if(!NIGHT)return;
   var remain=Math.max(0,NIGHT.dur-NIGHT.t),low=remain<30;
-  var ck=$('#nightClock');
+  var ck=gel('nightClock');
   ck.textContent=Math.ceil(remain)+'s';
   ck.classList.toggle('warn',low);
-  var tb=$('#timebar');
+  var tb=gel('timebar');
   tb.firstElementChild.style.width=(100*Math.max(0,1-NIGHT.t/NIGHT.dur))+'%';
   tb.classList.toggle('warn',low);
-  $('#nightEarn').textContent='¥'+fmt(NIGHT.earn);
-  $('#nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
+  gel('nightEarn').textContent='¥'+fmt(NIGHT.earn);
+  gel('nightStat').textContent='✅ '+NIGHT.servedN+' · ❌ '+NIGHT.lostN;
   syncDirBar(); /* v0.22.3 客流温度条 */
   /* v0.21.0 等距场景：耐心/烹饪进度通过 Canvas 动画实时更新，无需 DOM 操作 */
-  /* 保留隐藏 DOM 更新用于测试兼容 */
+  /* 保留隐藏 DOM 更新用于测试兼容；v0.23.8 走 NBAR 节点缓存，失配自愈重建 */
+  var qEl=gel('custQueue'),cEl=gel('cookList');
+  if((qEl&&NBAR.q.length!==qEl.childElementCount)||(cEl&&NBAR.c.length!==cEl.childElementCount)){PERF.barRe++;cacheNightBars()}
   NIGHT.queue.forEach(function(c,i){
-    var el=$('#custQueue').children[i];
-    if(el){var b=el.querySelector('.pbar i');if(b)b.style.width=(100*Math.max(0,c.pat)/c.patMax)+'%';var m=el.querySelector('.cMood');if(m)m.textContent=moodEmo(c)}
+    var nb=NBAR.q[i];if(!nb)return;
+    if(nb.bar)nb.bar.style.width=(100*Math.max(0,c.pat)/c.patMax)+'%';
+    if(nb.mood)nb.mood.textContent=moodEmo(c);
   });
   NIGHT.cooking.forEach(function(k,i){
-    var el=$('#cookList').children[i];
-    if(el){var b=el.querySelector('.cbar i');if(b)b.style.width=Math.round(100*Math.min(1,k.prog/k.need))+'%'}
+    var b=NBAR.c[i];
+    if(b)b.style.width=Math.round(100*Math.min(1,k.prog/k.need))+'%';
   });
 }
 function togglePause(){if(!NIGHT||!NIGHT.active)return;NIGHT.paused=!NIGHT.paused;SFX.click();renderNight()} /* v0.23.1 暂停/继续补点击音 */
