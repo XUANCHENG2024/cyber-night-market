@@ -326,13 +326,23 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
 }
 .btn:focus-visible,.tab:focus-visible,.chip:focus-visible,.cust:focus-visible,.tb:focus-visible,.cook:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
-/* ---------- v0.24.0 店铺装修动画 ---------- */
-@keyframes twk{50%{opacity:.25}}
-.twk{animation:twk 1.6s ease infinite}
-@keyframes holoF{50%{transform:translateY(-2.5px)}}
-.holo{animation:holoF 2.2s ease-in-out infinite}
+/* ---------- v0.24.1 店铺模型动效（GPU 层 transform/opacity · out-quart 缓动 · reduced-motion 全局接管） ---------- */
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
+.twk{animation:breathe 1.8s ease-in-out infinite}
+@keyframes neonPulse{0%,100%{opacity:1}50%{opacity:.72}}
+.neon{animation:neonPulse 2.6s ease-in-out infinite}
+@keyframes signFlicker{0%,91.9%,93.2%,94.4%,96.4%,100%{opacity:1}92.5%{opacity:.35}95.5%{opacity:.55}}
+.flick{animation:signFlicker 4.5s linear infinite}
+@keyframes holoF{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.holo{animation:holoF 2.2s ease-in-out infinite;transform-box:fill-box}
+@keyframes scanY{0%{transform:translateY(0)}100%{transform:translateY(10px)}}
+.scan{animation:scanY 1.8s cubic-bezier(.25,1,.5,1) infinite;transform-box:fill-box}
+@keyframes armSwing{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(16deg)}}
+.arm{animation:armSwing 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
+@keyframes steamUp{0%{transform:translateY(0);opacity:0}25%{opacity:.75}100%{transform:translateY(-11px);opacity:0}}
+.steam{animation:steamUp 2.2s ease-out infinite;transform-box:fill-box}
 @keyframes decoPop{0%{filter:brightness(2.4);transform:scale(1.08)}100%{filter:none;transform:none}}
-.deco-pop{animation:decoPop .6s ease}
+.deco-pop{animation:decoPop .6s cubic-bezier(.22,1,.36,1)}
 </style>
 </head>
 <body>
@@ -350,7 +360,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.0 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.1 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -2509,16 +2519,31 @@ function stallSVG(s){
   var lv=clamp(s.decor||0,0,DECORS.length-1);
   var nm=esc((s.n||'摊').substring(0,4));
   var neon=lv>=2;
-  var h='<svg viewBox="0 0 120 86" width="96" style="display:block;flex:none" role="img" aria-label="店铺外观 '+esc(DECORS[lv].n)+'">';
-  h+='<line x1="4" y1="78" x2="116" y2="78" stroke="var(--line)" stroke-width="2"/>';
-  h+='<rect x="30" y="52" width="60" height="26" rx="3" fill="var(--pan2)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
-  h+='<line x1="34" y1="30" x2="34" y2="52" stroke="var(--dim)"/><line x1="86" y1="30" x2="86" y2="52" stroke="var(--dim)"/>';
-  h+='<path d="M24 32 Q32 22 40 32 Q48 42 56 32 Q64 22 72 32 Q80 42 88 32 Q93 25 96 32 L92 23 Q60 13 28 23 Z" fill="var(--cyA2)" stroke="'+(neon?'var(--mg)':'var(--cy)')+'"/>';
-  h+='<rect x="42" y="35" width="36" height="13" rx="2" fill="var(--pan)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
-  h+='<text x="60" y="44.5" font-size="8" text-anchor="middle" fill="'+(neon?'var(--cy)':'#e8e8ff')+'"'+(neon?' font-weight="700"':'')+'>'+nm+'</text>';
-  if(lv>=1)for(var i=0;i<4;i++)h+='<circle class="twk" cx="'+(38+i*14.5)+'" cy="51" r="2" fill="var(--yl)" style="animation-delay:'+(i*.25)+'s"/>';
-  if(lv>=3)h+='<rect class="holo" x="48" y="5" width="24" height="11" rx="2" fill="var(--cyA)" stroke="var(--cy)"/><line x1="60" y1="16" x2="60" y2="23" stroke="var(--cy)" stroke-dasharray="2 2" opacity=".6"/>';
-  if(lv>=4)h+='<polyline points="92,52 100,41 96,30" fill="none" stroke="var(--gr)" stroke-width="2.5"/><circle cx="100" cy="41" r="2.4" fill="var(--gr)"/><circle cx="96" cy="30" r="2.8" fill="var(--gr)"/>';
+  var h='<svg viewBox="0 0 120 88" width="96" style="display:block;flex:none" role="img" aria-label="店铺外观 '+esc(DECORS[lv].n)+'">';
+  /* 地面+投影（立体感） */
+  h+='<line x1="4" y1="80" x2="116" y2="80" stroke="var(--line)" stroke-width="2"/>';
+  h+='<ellipse cx="60" cy="80" rx="34" ry="3.5" fill="rgba(0,0,0,.35)"/>';
+  /* 支杆+灶台+锅（常驻骨架） */
+  h+='<line x1="34" y1="30" x2="34" y2="56" stroke="var(--dim)"/><line x1="86" y1="30" x2="86" y2="56" stroke="var(--dim)"/>';
+  h+='<rect x="64" y="44" width="18" height="10" rx="2" fill="var(--pan)" stroke="var(--line)"/>';
+  h+='<circle cx="73" cy="47" r="3" fill="var(--rd)" opacity=".8"/>';
+  /* 招牌小旗（Lv0 也有的一点生气，静态） */
+  h+='<path d="M34 22 L44 25 L34 28 Z" fill="var(--yl)"/>';
+  /* 波浪顶棚 */
+  h+='<path class="'+(neon?'neon':'')+'" d="M24 32 Q32 22 40 32 Q48 42 56 32 Q64 22 72 32 Q80 42 88 32 Q93 25 96 32 L92 23 Q60 13 28 23 Z" fill="var(--cyA2)" stroke="'+(neon?'var(--mg)':'var(--cy)')+'"/>';
+  /* 招牌+店名 */
+  h+='<rect x="42" y="36" width="36" height="13" rx="2" fill="var(--pan)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
+  h+='<text x="60" y="45.5" font-size="8" text-anchor="middle" fill="'+(neon?'var(--cy)':'#e8e8ff')+'"'+(neon?' font-weight="700" class="flick"':'')+'>'+nm+'</text>';
+  /* 柜台+台面亮线 */
+  h+='<rect class="'+(neon?'neon':'')+'" x="30" y="56" width="60" height="24" rx="3" fill="var(--pan2)" stroke="'+(neon?'var(--mg)':'var(--line)')+'"/>';
+  h+='<line x1="31" y1="56" x2="89" y2="56" stroke="var(--cy)" opacity=".5"/>';
+  /* Lv1+ 灯串（呼吸明灭，stagger） */
+  if(lv>=1)for(var i=0;i<4;i++)h+='<circle class="twk" cx="'+(38+i*14.5)+'" cy="54" r="2" fill="var(--yl)" style="animation-delay:'+(i*.25)+'s"/>';
+  /* Lv3+ 全息菜单牌（浮动+扫描线） */
+  if(lv>=3)h+='<g class="holo"><rect x="48" y="4" width="24" height="12" rx="2" fill="var(--cyA)" stroke="var(--cy)"/><rect class="scan" x="49" y="5" width="22" height="1.6" fill="var(--cy)" opacity=".85"/></g>';
+  /* Lv4 机械臂（绕关节摆动）+ 蒸汽 */
+  if(lv>=4)h+='<circle class="steam" cx="70" cy="40" r="1.6" fill="#fff" opacity="0"/><circle class="steam" cx="77" cy="40" r="1.3" fill="#fff" opacity="0" style="animation-delay:1.1s"/>'+
+    '<g class="arm"><polyline points="92,56 100,44 96,33" fill="none" stroke="var(--gr)" stroke-width="2.5"/><circle cx="100" cy="44" r="2.4" fill="var(--gr)"/><circle cx="96" cy="33" r="2.8" fill="var(--gr)"/></g>';
   return h+'</svg>';
 }
 function decorAsk(){
