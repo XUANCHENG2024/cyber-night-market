@@ -411,7 +411,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.5 · 2026-10-30</div>
+    <div class="game-ver">内测版 v0.24.6 · 2026-10-30</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -3345,6 +3345,7 @@ function flowMult(){  var E=ev(),ef=E?(E.flow||1):1,CM=G.cmod||{};
   var ap=avgPriceMod();if(ap>1.2)f*=.8;else if(ap<.9)f*=1.15;
   f*=(1+Math.min(.5,(G.day||1)*.015)); /* v0.23.6 客流随天数缓升（day10 +15% / day33 封顶 +50%），补开局无压力区 */
   f*=1+decoB().flow; /* v0.24.0 装修客流加成 */
+  f*=rainK('flow'); /* v0.24.6 雨夜客流系数 */
   return f;
 }
 function pickDish(cust){
@@ -3372,6 +3373,8 @@ function startNight(){
   NIGHT={active:true,t:0,dur:Math.min(120,Math.round(60+G.day*1.2)),queue:[],cooking:[],earn:0,servedN:0,sellN:0,lostN:0, /* v0.23.6 夜晚时长随天数动态延长（day33 封顶 100s，上限 120s 保底） */
     cid:0,spawnT:1.2,staffT:3,paused:false,speed:1,timer:null,
     critN:0,tipN:0,specN:0,begN:0,combo:0,bestCombo:0,dishSet:new Set(),dishCnt:{},dir:0,dirToast:0}; /* v0.23.9 dishCnt 热销榜瞬态计数 */
+  NIGHT.rain=rollRainNight(G.day,G.event&&G.event.id,G.weather); /* v0.24.6 雨夜特殊事件 */
+  var RN0=rainNight();if(RN0)toast(RN0.ic+' '+RN0.n+'：'+RN0.d,'cy');
   saveGame();
   var LL=ltd();if(LL){checkAch('ltd');toast(LL.ic+' 限时活动：'+LL.n+' 已生效','gold')}
   renderNight();showScreen('scr-night');
@@ -3535,14 +3538,8 @@ function renderNightScene(){
       case ENT_COOK:drawIsoCook(ctx,e,DPR,t);break;
     }
   }
-  /* 雨丝 */
-  ctx.save();
-  ctx.strokeStyle='rgba(150,180,255,.14)';ctx.lineWidth=DPR;
-  for(var ri=0;ri<18;ri++){
-    var rx=(W*.06*ri+t*36)%W,ry=(H*.11*(ri%7)+t*72)%H;
-    ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-7*DPR,ry+16*DPR);ctx.stroke();
-  }
-  ctx.restore();
+  /* 雨丝 + 暴雨闪电（v0.24.6 抽为 drawRainFx，雨夜事件加密雨丝） */
+  drawRainFx(ctx,W,H,DPR,t);
   /* v0.22.0 即时特效层（金钱飞字/金币粒子） */
   drawSceneFx(ctx,t*1000,DPR);
 }
@@ -3788,6 +3785,36 @@ function nightWaveTick(){
   if(NIGHT._wave!==w.id){NIGHT._wave=w.id;if(w.n){toast(w.n,'cy');SFX.click()}}
   syncAtmoWave(); /* v0.24.4 氛围层随波段换气 */
 }
+/* ---------- v0.24.6 雨夜特殊事件 ---------- */
+var RAIN_NIGHTS=[
+ {id:'storm',  n:'暴雨夜',  ic:'⛈️', d:'客流 -20% · 小费 +40%', flow:.8,  tip:1.4, pat:1, rain:2.5, flash:1},
+ {id:'drizzle',n:'细雨夜',  ic:'🌧️', d:'客流 +10% · 雨声助兴', flow:1.1, tip:1,   pat:1, rain:1.6},
+ {id:'shelter',n:'避雨人潮',ic:'☔', d:'客流 +25% · 耐心 -10%', flow:1.25,tip:1,   pat:.9, rain:1.8}
+];
+/** 判定当晚雨夜类型（纯函数，确定性，测试可复现）：事件暴雨 > 天气细雨 > 固定避雨日 */
+function rollRainNight(day,evId,wxId){
+  if(evId==='rain2')return 'storm';
+  if(wxId==='rain')return 'drizzle';
+  if(((day*7+3)%10)<2)return 'shelter'; /* day 1,4,11,14,21,24... 触发 */
+  return null;
+}
+/** 当前生效的雨夜条目（仅夜晚营业中；瞬态不落档） */
+function rainNight(){return (NIGHT&&NIGHT.active&&NIGHT.rain)?RAIN_NIGHTS.find(function(r){return r.id===NIGHT.rain})||null:null}
+/** 雨夜系数读取：无雨夜恒 1（与既有乘区零干扰） */
+function rainK(k){var R=rainNight();return R?(R[k]||1):1}
+/** 雨丝 + 暴雨闪电（闪电 fill-only 确定性相位，不碰 stroke 计数） */
+function drawRainFx(ctx,W,H,DPR,t){
+  var R=rainNight();
+  ctx.save();
+  ctx.strokeStyle='rgba(150,180,255,.14)';ctx.lineWidth=DPR;
+  var rn=Math.round(18*(R?(R.rain||1):1));
+  for(var ri=0;ri<rn;ri++){
+    var rx=(W*.06*ri+t*36)%W,ry=(H*.11*(ri%7)+t*72)%H;
+    ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-7*DPR,ry+16*DPR);ctx.stroke();
+  }
+  ctx.restore();
+  if(R&&R.flash){var ph=(t*1.3)%6;if(ph<.12){ctx.save();ctx.globalAlpha=.5*(1-ph/.12);ctx.fillStyle='#cfe4ff';ctx.fillRect(0,0,W,H);ctx.restore()}}
+}
 /* ---------- v0.24.4 夜晚环境氛围层 ---------- */
 /** 生成浮尘粒子（确定性布局，幂等；返回当前粒子数） */
 function initAtmo(){
@@ -3849,7 +3876,7 @@ function spawnCust(){
   NIGHT.cid++;
   var CM=G.cmod||{};
   var VB2=venueBuff();
-  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(vbuffPat||1)*(VB2.pat||1)*(ev()?(ev().pat||1):1)*(CM.pat||1)*dirPat(); /* v0.22.2 自适应耐心 */
+  var patMax=16*(1+.3*(G.talents.chair||0))*cust.pat*(vbuffPat||1)*(VB2.pat||1)*(ev()?(ev().pat||1):1)*(CM.pat||1)*dirPat()*rainK('pat'); /* v0.22.2 自适应耐心；v0.24.6 雨夜耐心系数 */
   NIGHT.queue.push({cid:NIGHT.cid,type:cust.id,n:cust.n,e:cust.e,pay:cust.pay,tip:cust.tip,
     noRep:!!cust.noRep,sp:sp?sp.id:null,spD:sp?sp.dsc:'',
     dish:dish.id,dishN:dish.n,price:dishPrice(dish),cat:dish.cat,pat:patMax,patMax:patMax});
@@ -3947,7 +3974,7 @@ function serveOut(k){  NIGHT.cooking=NIGHT.cooking.filter(function(x){return x!=
   NIGHT.combo=(NIGHT.combo||0)+1;if(NIGHT.combo>(NIGHT.bestCombo||0))NIGHT.bestCombo=NIGHT.combo; /* v0.18.0 连击计数 */
   if(NIGHT.combo%5===0){toast('🔥 连击 x'+NIGHT.combo+'！小费加成 +'+Math.round(Math.min(50,NIGHT.combo*4))+'%','gold');SFX.combo(NIGHT.combo);spawnSceneFx('🔥 连击 x'+NIGHT.combo,'#22d3ee',15);buzz(24)} /* v0.22.0 连击反馈包 */
   var ap=avgPriceMod();
-  var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura*waveTipK()*(1+decoB().tip); /* v0.23.3 收摊冲刺波段小费加成；v0.24.0 装修小费加成 */
+  var tip=base*.12*cust.tip*(vbuff.tip||1)*(CB.tipK||1)*(VB.tipK||1)*(1+.25*(G.talents.tip||0)+.1*(G.ups.sign||0))*(E?(E.tip||1):1)*(CM.tip||1)*ltdTip()*aura*waveTipK()*(1+decoB().tip)*rainK('tip'); /* v0.23.3 收摊冲刺波段小费加成；v0.24.0 装修小费加成；v0.24.6 雨夜小费系数 */
   if(ap>1.2)tip*=1.3;else if(ap<.9)tip*=.8;
   if(E&&E.vipFirst&&NIGHT.servedN===0)tip=base*.3;
   tip*=1+Math.min(.5,(NIGHT.combo||0)*.04); /* v0.18.0 连击小费加成（参考 Cooking Madness combo） */
@@ -4335,8 +4362,10 @@ function endNight(){  if(NIGHT.timer){clearInterval(NIGHT.timer);NIGHT.timer=nul
     }
     cft+='</div>';
   }
+  var RN2=NIGHT.rain?RAIN_NIGHTS.find(function(r){return r.id===NIGHT.rain})||null:null; /* v0.24.6 雨夜结算行（此刻 NIGHT.active 已 false，直接读 NIGHT.rain） */
   $('#settleBody').innerHTML=cft+
     '<div class="settle-line"><span>💰 今晚营收</span><b id="stlEarn" data-v="'+Math.round(NIGHT.earn)+'">¥'+fmt(NIGHT.earn)+'</b></div>'+
+    (RN2?'<div class="settle-line"><span>'+RN2.ic+' '+RN2.n+'</span><b style="color:var(--cy)">'+RN2.d+'</b></div>':'')+ /* v0.24.6 雨夜事件结算行 */
     '<div class="settle-line"><span>🎫 接待顾客</span><b>'+NIGHT.servedN+' 位</b></div>'+
     hotDishHTML()+ /* v0.23.9 今晚热销榜 */
     '<div class="settle-line"><span>💢 气跑</span><b>'+NIGHT.lostN+' 位</b></div>'+
