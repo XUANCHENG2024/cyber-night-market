@@ -137,6 +137,23 @@ h3{margin-bottom:10px;font-size:17px}
 .ach-card{display:flex;gap:8px;background:var(--pan2);border:1px solid var(--line);border-radius:10px;padding:10px;align-items:center}
 .ach-card.locked{opacity:.5}
 .ach-card.got{border-color:var(--gold);box-shadow:0 0 8px rgba(255,200,50,.15)}
+/* ---------- v0.24.3 成就图鉴：完成度进度条 + 稀有度分级 + 逐卡入场 ---------- */
+.agHead{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);margin:14px 0 6px}
+.agHead b{color:var(--yl);font-size:13px;font-variant-numeric:tabular-nums}
+.agBar{height:6px;background:var(--pan2);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.agBar i{display:block;height:100%;background:linear-gradient(90deg,var(--cy),var(--mg));border-radius:3px;transition:width var(--t-slow) ease}
+.ach-card .ach-bd{flex:1;min-width:0}
+.ach-rr{font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;margin-left:6px;border:1px solid currentColor;opacity:.8;vertical-align:middle}
+.ach-card.rar-c .ach-rr{color:var(--dim)}
+.ach-card.rar-r{border-color:var(--cyA2)}
+.ach-card.rar-r .ach-rr{color:var(--cy)}
+.ach-card.rar-e{border-color:rgba(255,200,50,.55)}
+.ach-card.rar-e .ach-rr{color:var(--yl)}
+.ach-card.rar-e.got{box-shadow:0 0 10px rgba(255,200,50,.22)}
+.ach-rw{font-size:10px;color:var(--dim);margin-top:3px}
+.ach-card.got .ach-rw{color:var(--gr)}
+@keyframes achIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#achGalWrap .ach-card{animation:achIn .26s ease both}
 .ach-ic{font-size:26px;min-width:34px;text-align:center}
 .ach-n{font-size:12px;font-weight:700}
 .ach-d{font-size:11px;color:var(--dim);margin-top:2px}
@@ -370,7 +387,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.2 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.3 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -381,6 +398,8 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
       <div class="btn rd" data-act="askReset" role="button" tabindex="0">🗑️ 清除存档</div>
     </div>
     <div id="menuLife"></div>
+    <div class="btn sm" id="btnAchGal" data-act="achGal" role="button" tabindex="0" style="margin-top:10px">🏆 成就图鉴</div>
+    <div id="achGalWrap" class="hidden"></div>
     <div class="menu-foot">霓虹闪烁的 2124 年，你从大厂裸辞，决定在赛博夜市支起一个小摊。<br>
     白手起家 · 研发菜品 · 招兵买马 · 对抗房租 · 开启连锁 —— 做出全街区最狂的摊！<br>
     本地自动存档 · 无需联网 · 双击即玩</div>
@@ -1936,6 +1955,48 @@ function renderMenuLife(){
     '<div class="ml">🏆 生涯战绩：接待 '+fmt(LIFE.served)+' 位 · 累计 ¥'+fmt(LIFE.earned)+' · 历史分店 '+LIFE.brands+' 家 · 单晚最佳 ¥'+fmt(LIFE.bestDay)+'</div>'+
     '<div class="achs">'+ACHS.map(function(a){
       return '<span class="'+(ACH[a.id]?'on':'')+'" title="'+a.n+'：'+a.d+'">'+a.ic+'</span>'}).join('')+'</div>';
+  renderAchGal();
+}
+/* ---------- v0.24.3 成就图鉴：稀有度分级 + 完成度进度 + 奖励预览 ---------- */
+var ACHGAL_OPEN=false;
+/** 稀有度判定（纯函数）：传说=含 3+ 天赋点奖励 / 稀世=含天赋点或 ≥¥400 奖金 / 普通=其余 */
+function achRar(a){
+  var r=(a&&a.rew)||{};
+  if((r.tal||0)>=3)return 'e';
+  if((r.tal||0)>=1||(r.money||0)>=400)return 'r';
+  return 'c';
+}
+var RAR_META={c:'普通',r:'稀世',e:'传说'};
+function achRewTxt(a){
+  var r=(a&&a.rew)||{},t=[];
+  if(r.money)t.push('¥'+fmt(r.money));
+  if(r.rep)t.push('声望+'+r.rep);
+  if(r.tal)t.push('✨×'+r.tal);
+  if(r.dish)t.push('菜谱');
+  return t.join(' · ');
+}
+function achGalHTML(){
+  var total=ACHS.length,got=ACHS.filter(function(a){return !!ACH[a.id]}).length;
+  var pct=total?Math.round(100*got/total):0;
+  var h='<div class="agHead"><span>🏆 成就图鉴 · 完成度</span><b>'+got+' / '+total+'（'+pct+'%）</b></div>'+
+    '<div class="agBar"><i style="width:'+pct+'%"></i></div>'+
+    '<div class="ach-grid">';
+  ACHS.forEach(function(a){
+    var on=!!ACH[a.id],rr=achRar(a),rw=achRewTxt(a);
+    h+='<div class="ach-card rar-'+rr+' '+(on?'got':'locked')+'">'+
+      '<div class="ach-ic">'+a.ic+'</div><div class="ach-bd">'+
+      '<div class="ach-n">'+esc(a.n)+'<span class="ach-rr">'+RAR_META[rr]+'</span></div>'+
+      '<div class="ach-d">'+esc(a.d)+'</div>'+
+      '<div class="ach-rw">'+(on?'✅ 已达成'+(rw?' · '+rw:''):(rw?'🎁 '+rw:'尚未达成'))+'</div>'+
+      '</div></div>';
+  });
+  return h+'</div>';
+}
+function renderAchGal(){
+  var w=$('#achGalWrap');if(!w)return;
+  w.classList.toggle('hidden',!ACHGAL_OPEN);
+  var b=$('#btnAchGal');if(b)b.textContent=ACHGAL_OPEN?'🏆 收起图鉴':'🏆 成就图鉴';
+  if(ACHGAL_OPEN)w.innerHTML=achGalHTML();
 }
 function refreshMenuContinue(){
   var has=false;try{has=!!localStorage.getItem(SAVE_KEY)}catch(e){}
@@ -4309,6 +4370,7 @@ document.addEventListener('click',function(e){
     case 'closeModal':SFX.click();closeModal();break;
     case 'offlineClose':closeModal();if(G&&G.choice){var pc2=CHOICES.find(function(c){return c.id===G.choice.id});if(pc2)showChoice(pc2);else{G.choice=null;saveGame()}}break;
     case 'askReset':askReset();break;
+    case 'achGal':ACHGAL_OPEN=!ACHGAL_OPEN;SFX.click();renderAchGal();break;
     case 'resetGo':resetGo();break;
     case 'toMenu':SFX.click();toMenu();break;
     case 'again':newGame();break;
