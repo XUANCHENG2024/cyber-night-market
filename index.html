@@ -411,7 +411,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.4 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.5 · 2026-10-30</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -3661,6 +3661,45 @@ function drawIsoCust(ctx,e,DPR,t){
     ctx.save();ctx.globalAlpha=.35+.4*pl;ctx.strokeStyle='#ff5d5d';ctx.lineWidth=2*DPR;
     ctx.beginPath();ctx.arc(p.x,p.y-bob-8*DPR,(13+3*pl)*DPR,0,Math.PI*2);ctx.stroke();ctx.restore();
   }
+  /* v0.24.5 情绪弹幕气泡（排队顾客头顶，文案按 cid 确定性轮换） */
+  drawBub(ctx,c,p.x,p.y-bob-58*DPR,DPR,t);
+}
+/* ---------- v0.24.5 顾客情绪弹幕 ---------- */
+var BUB_CHAT=['好香啊','听说很绝','来一份','哇这灯牌','排队也要吃'];
+var BUB_URGE=['快一点','等好久了','还要多久','肚子咕咕叫'];
+var BUB_ANG=['要走了!','太慢了!','不等了!'];
+/** 气泡文案（纯函数，cid 确定性）：特殊顾客优先；普通顾客按耐心分档；闲聊档 1/3 隐藏避免满屏 */
+function custBubTxt(c){
+  if(!c)return '';
+  if(c.sp==='beggar')return '🙏 谢谢';
+  if(c.sp==='thief')return '👀 ...';
+  if(c.sp==='gourmet')return '✨ 要最好的';
+  if(c.sp==='streamer')return '📱 直播探店';
+  var pr=c.patMax?c.pat/c.patMax:1;
+  if(pr<.25)return BUB_ANG[c.cid%BUB_ANG.length];
+  if(pr<.55)return BUB_URGE[c.cid%BUB_URGE.length];
+  if(c.cid%3===2)return '';
+  return BUB_CHAT[c.cid%BUB_CHAT.length];
+}
+/** 头顶弹幕气泡：仅用 fill/fillRect/fillText（不增 stroke 计数，兼容测试 stub） */
+function drawBub(ctx,c,px,py,DPR,t){
+  var txt=custBubTxt(c);if(!txt)return '';
+  var pr=c.patMax?c.pat/c.patMax:1;
+  var fs=Math.round(9*DPR);
+  var w=txt.length*fs+12*DPR,h=15*DPR;
+  var sway=Math.sin(t*2.1+c.cid)*1.2*DPR;
+  var x0=px-w/2,y0=py-h+sway;
+  var col=pr<.25?'#ff8d8d':pr<.55?'#ffd166':'#a5f3fc';
+  ctx.save();
+  ctx.globalAlpha=.94;
+  ctx.fillStyle='rgba(7,7,20,.88)';
+  ctx.fillRect(x0,y0,w,h);
+  ctx.fillRect(px-2*DPR,y0+h-1,4*DPR,3*DPR); /* 尖角小方块 */
+  ctx.fillStyle=col;
+  ctx.font='bold '+fs+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(txt,px,y0+h/2);
+  ctx.restore();
+  return txt;
 }
 /* 烹饪项（灶台上方浮动） */
 function drawIsoCook(ctx,e,DPR,t){
