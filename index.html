@@ -157,6 +157,30 @@ h3{margin-bottom:10px;font-size:17px}
 .ach-ic{font-size:26px;min-width:34px;text-align:center}
 .ach-n{font-size:12px;font-weight:700}
 .ach-d{font-size:11px;color:var(--dim);margin-top:2px}
+/* ---------- v0.24.4 夜晚环境氛围层：霓虹底光 / 雾带 / 浮尘 / 暗角（纯 CSS 叠加，随波段换气） ---------- */
+#sceneWrap{position:relative;margin:0 0 8px;border-radius:10px}
+#nightScene{margin:0}
+#atmo{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:10px;
+ --amC:var(--cy);--amC2:var(--mg);--amD:.55}
+#atmo[data-wave=warm]{--amC:#ff8a3d;--amC2:#ffd166;--amD:.38}
+#atmo[data-wave=rush]{--amC:var(--cy);--amC2:var(--mg);--amD:.78}
+#atmo[data-wave=last]{--amC:var(--yl);--amC2:#ff8a3d;--amD:.95}
+.amGlow{position:absolute;left:0;right:0;bottom:0;height:64%;
+ background:radial-gradient(58% 100% at 16% 100%,var(--amC) 0,transparent 62%),
+            radial-gradient(58% 100% at 84% 100%,var(--amC2) 0,transparent 60%);
+ animation:amBreathe 6.5s ease-in-out infinite}
+.amFog{position:absolute;left:-20%;right:-20%;bottom:0;height:46%;
+ background:linear-gradient(180deg,transparent 0,rgba(170,195,255,.05) 55%,rgba(170,195,255,.09) 100%);
+ animation:amDrift 16s ease-in-out infinite alternate}
+.amDust{position:absolute;inset:0}
+.amDust i{position:absolute;left:var(--x);bottom:-4px;width:2px;height:2px;border-radius:50%;
+ background:var(--amC);box-shadow:0 0 4px var(--amC);opacity:0;
+ animation:amFloat var(--d) linear var(--dl) infinite}
+.amVig{position:absolute;inset:0;box-shadow:inset 0 0 60px 16px rgba(4,4,16,.5)}
+@keyframes amBreathe{0%,100%{opacity:calc(var(--amD) * .13);transform:scaleY(1)}50%{opacity:calc(var(--amD) * .3);transform:scaleY(1.06)}}
+@keyframes amDrift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}
+@keyframes amFloat{0%{opacity:0;transform:translateY(0)}18%{opacity:.75}100%{opacity:0;transform:translateY(-300px)}}
+body.sceneOff #atmo{display:none}
 body[data-skin=sakura]{--bg:#1a0f14;--pan:#241318;--pan2:#2e1a22;--line:#4a2a38;--cy:#ffb3c6;--mg:#ff8fab;--yl:#ffd6e0;--gr:#7be0a3;--rd:#ff7d8d;--dim:#b08a99}
 body[data-skin=jade]{--bg:#08130f;--pan:#0e1f19;--pan2:#142a22;--line:#264a3e;--cy:#5eead4;--mg:#34d399;--yl:#a7f3d0;--gr:#6ee7b7;--rd:#ff8d7d;--dim:#7ba598}
 body[data-skin=violet]{--bg:#100a1c;--pan:#1a1230;--pan2:#221840;--line:#3a2a60;--cy:#a78bfa;--mg:#c084fc;--yl:#f0abfc;--gr:#7dd3fc;--rd:#ff7d9d;--dim:#9a8ac0}
@@ -387,7 +411,7 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
     <div class="menu-deco">🍜 🧋 🍢 🍔 🍧</div>
     <div class="game-logo">赛博夜市</div>
     <div class="game-sub">深夜摆摊模拟器 · CYBER NIGHT MARKET</div>
-    <div class="game-ver">内测版 v0.24.3 · 2026-10-29</div>
+    <div class="game-ver">内测版 v0.24.4 · 2026-10-29</div>
     <div class="menu-btns">
       <div class="btn mg" data-act="newgame" role="button" tabindex="0">⚡ 开张大吉（新游戏）</div>
       <div class="btn yl hidden" id="btnContinue" data-act="continue" role="button" tabindex="0">🌙 继续经营</div>
@@ -423,7 +447,13 @@ body.sceneOff #cookList,body.sceneOff #custQueue{position:static;left:auto;top:a
       <div id="dirWrap" title="客流温度：AI 正在根据你的表现调整夜间难度（高=加压，低=减压）" role="img" aria-label="夜间难度温度"><i id="dirBar"></i></div>
       <div id="nightEarn">¥0</div>
     </div>
-    <canvas id="nightScene"></canvas>
+    <div id="sceneWrap">
+      <canvas id="nightScene"></canvas>
+      <div id="atmo" aria-hidden="true">
+        <div class="amGlow"></div><div class="amFog"></div>
+        <div class="amDust"></div><div class="amVig"></div>
+      </div>
+    </div>
     <div id="cookList"></div>
     <div id="custQueue"></div>
     <div class="night-ops">
@@ -3717,6 +3747,28 @@ function waveTipK(){var w=nightWave();return w?w.tip:1}
 function nightWaveTick(){
   var w=nightWave();if(!w)return;
   if(NIGHT._wave!==w.id){NIGHT._wave=w.id;if(w.n){toast(w.n,'cy');SFX.click()}}
+  syncAtmoWave(); /* v0.24.4 氛围层随波段换气 */
+}
+/* ---------- v0.24.4 夜晚环境氛围层 ---------- */
+/** 生成浮尘粒子（确定性布局，幂等；返回当前粒子数） */
+function initAtmo(){
+  var d=$('#atmo .amDust');if(!d)return 0;
+  if(!d.childElementCount){
+    var h='';
+    for(var i=0;i<14;i++){
+      var x=(i*37+11)%100,dur=7+((i*13)%9),dl=((i*29)%70)/10;
+      h+='<i style="--x:'+x+'%;--d:'+dur+'s;--dl:'+dl+'s"></i>';
+    }
+    d.innerHTML=h;
+  }
+  return d.childElementCount;
+}
+/** 波段换气：warm 暖橙 / rush 青紫高压 / last 收摊金，波间回落 base */
+function syncAtmoWave(){
+  var e=$('#atmo');if(!e)return 'none';
+  var w=nightWave(),id=(w&&w.id)||'base';
+  if(e.getAttribute('data-wave')!==id)e.setAttribute('data-wave',id);
+  return id;
 }
 /** 生成顾客间隔（秒）：AI Director 客流旋钮 × 三波段节奏 */
 function spawnGap(){return (3.6/flowMult()/dirSpawn())*(0.75+Math.random()*.5)*waveSpawnK()}
@@ -4466,6 +4518,7 @@ document.addEventListener('click',function(e){
     loadLife();
     var _bs=loadGame();if(_bs)G=_bs;
     applySkin();
+    initAtmo(); /* v0.24.4 氛围层浮尘粒子 */
     renderMenuLife();
     refreshMenuContinue();
     showScreen('scr-menu');
